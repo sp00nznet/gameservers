@@ -36,6 +36,29 @@ readonly RCON_PASSWORD="changeme_rcon"
 readonly MEMORY_MIN="2048m"
 readonly MEMORY_MAX="4096m"
 
+# =============================================================================
+# WORKSHOP MODS CONFIGURATION
+# =============================================================================
+# Add Steam Workshop mod IDs here (comma-separated, no spaces)
+# Find mod IDs on the Steam Workshop URL: steamcommunity.com/sharedfiles/filedetails/?id=XXXXXXXXX
+#
+# Example popular mods:
+#   2392709985  - Brita's Weapon Pack
+#   2169435993  - Filibuster Rhymes' Used Cars
+#   2778576730  - Autotsar Tuning Atelier
+#   2313387159  - Authentic Z
+#   2650307290  - Arsenal(26) GunFighter
+#
+WORKSHOP_ITEMS=""
+
+# Mod folder names (comma-separated, must match Workshop mod folder names)
+# These are the folder names inside the mod's /mods/ directory
+# Example: "Brita,Filibuster,ATA,AuthenticZ"
+MODS=""
+
+# =============================================================================
+# SERVER DATA DIRECTORIES
+# =============================================================================
 # Server data directories
 readonly SERVER_DATA_DIR="/home/pzuser/Zomboid"
 readonly SERVER_CONFIG_DIR="${SERVER_DATA_DIR}/Server"
@@ -212,9 +235,16 @@ AntiCheatProtectionType20=true
 # Map
 Map=Muldraugh, KY
 
-# Mods (comma-separated workshop IDs)
-WorkshopItems=
-Mods=
+# =============================================================================
+# WORKSHOP MODS
+# =============================================================================
+# Workshop Item IDs (comma-separated)
+# Edit the WORKSHOP_ITEMS variable at the top of pz-server-setup.sh to add mods
+WorkshopItems=${WORKSHOP_ITEMS}
+
+# Mod folder names (comma-separated)
+# Edit the MODS variable at the top of pz-server-setup.sh to add mod names
+Mods=${MODS}
 
 # Steam Settings
 SteamVAC=true
@@ -324,6 +354,16 @@ show_summary() {
     echo -e "${BOLD}Configuration Files:${RESET}"
     echo -e "  ${DIM}Server config:${RESET}   ${SERVER_CONFIG_DIR}/${SERVICE_NAME}.ini"
     echo -e "  ${DIM}Sandbox opts:${RESET}    ${SERVER_CONFIG_DIR}/${SERVICE_NAME}_SandboxVars.lua"
+    echo -e "  ${DIM}Setup script:${RESET}    ${SCRIPT_DIR}/pz-server-setup.sh"
+    echo ""
+    echo -e "${BOLD}Workshop Mods:${RESET}"
+    if [[ -n "$WORKSHOP_ITEMS" ]]; then
+        echo -e "  ${GREEN}Configured:${RESET}      ${WORKSHOP_ITEMS}"
+    else
+        echo -e "  ${DIM}None configured${RESET}"
+    fi
+    echo -e "  ${DIM}To add mods, edit WORKSHOP_ITEMS and MODS variables in:${RESET}"
+    echo -e "  ${CYAN}${SCRIPT_DIR}/pz-server-setup.sh${RESET}"
     echo ""
     separator "-" 60
     echo ""
