@@ -6,11 +6,15 @@ A collection of automated setup scripts for deploying dedicated game servers on 
 
 | Game | Script | Steam App ID | Default Port |
 |------|--------|--------------|--------------|
+| ARK: Survival Ascended | `arkasa/ark-server-setup.sh` | 2430930 | 7777 |
+| Half-Life 2: Deathmatch | `hl2dm/hl2dm-server-setup.sh` | 232370 | 27015 |
+| Half-Life Deathmatch | `hldm/hldm-server-setup.sh` | 90 | 27015 |
 | Killing Floor | `killingfloor/kf-server-setup.sh` | 215360 | 7707 |
 | Killing Floor 2 | `killingfloor2/kf2-server-setup.sh` | 232130 | 7777 |
-| Team Fortress 2 | `teamfortress2/tf2-server-setup.sh` | 232250 | 27015 |
 | Project Zomboid | `projectzomboid/pz-server-setup.sh` | 380870 | 16261 |
-| ARK: Survival Ascended | `arkasa/ark-server-setup.sh` | 2430930 | 7777 |
+| Synergy | `synergy/synergy-server-setup.sh` | 17520 | 27015 |
+| Team Fortress 2 | `teamfortress2/tf2-server-setup.sh` | 232250 | 27015 |
+| Team Fortress Classic | `tfc/tfc-server-setup.sh` | 20 | 27015 |
 
 ## Quick Start
 
@@ -48,9 +52,16 @@ sudo apt-get install curl tar screen dialog
 
 ### Game-Specific Requirements
 
-**Team Fortress 2:**
-- Steam Game Server Login Token (GSLT) for public server listing
-- Get your token at: https://steamcommunity.com/dev/managegameservers
+**GoldSrc Games (Half-Life DM, TFC):**
+- 32-bit libraries on 64-bit systems
+```bash
+sudo apt-get install lib32gcc-s1
+```
+
+**Source Games (HL2DM, TF2, Synergy):**
+- 32-bit libraries on 64-bit systems
+- GSLT recommended for public server listing
+- Get tokens at: https://steamcommunity.com/dev/managegameservers
 
 **Project Zomboid:**
 - Java 17 or higher
@@ -76,16 +87,24 @@ gameservers/
 ├── README.md                     # This file
 ├── lib/
 │   └── common.sh                 # Shared functions and utilities
+├── arkasa/
+│   └── ark-server-setup.sh       # ARK: Survival Ascended
+├── hl2dm/
+│   └── hl2dm-server-setup.sh     # Half-Life 2: Deathmatch
+├── hldm/
+│   └── hldm-server-setup.sh      # Half-Life Deathmatch
 ├── killingfloor/
-│   └── kf-server-setup.sh        # Killing Floor 1 setup
+│   └── kf-server-setup.sh        # Killing Floor
 ├── killingfloor2/
-│   └── kf2-server-setup.sh       # Killing Floor 2 setup
-├── teamfortress2/
-│   └── tf2-server-setup.sh       # Team Fortress 2 setup
+│   └── kf2-server-setup.sh       # Killing Floor 2
 ├── projectzomboid/
-│   └── pz-server-setup.sh        # Project Zomboid setup
-└── arkasa/
-    └── ark-server-setup.sh       # ARK: Survival Ascended setup
+│   └── pz-server-setup.sh        # Project Zomboid
+├── synergy/
+│   └── synergy-server-setup.sh   # Synergy
+├── teamfortress2/
+│   └── tf2-server-setup.sh       # Team Fortress 2
+└── tfc/
+    └── tfc-server-setup.sh       # Team Fortress Classic
 ```
 
 ## How It Works
@@ -150,11 +169,15 @@ Each game server script follows the same pattern:
 | Component | Location |
 |-----------|----------|
 | SteamCMD | `/opt/steamcmd/` |
+| ARK: Survival Ascended | `/opt/arkserver/` |
+| Half-Life 2: Deathmatch | `/opt/hl2dmserver/` |
+| Half-Life Deathmatch | `/opt/hldmserver/` |
 | Killing Floor | `/opt/kf1server/` |
 | Killing Floor 2 | `/opt/kf2server/` |
-| Team Fortress 2 | `/opt/tf2server/` |
 | Project Zomboid | `/opt/pzserver/` |
-| ARK: Survival Ascended | `/opt/arkserver/` |
+| Synergy | `/opt/synergyserver/` |
+| Team Fortress 2 | `/opt/tf2server/` |
+| Team Fortress Classic | `/opt/tfcserver/` |
 | Log Files | `/var/log/gameservers/` |
 
 ## Service Management
@@ -185,11 +208,15 @@ sudo journalctl -u <service-name> -f
 ```
 
 Service names:
+- `arkserver` - ARK: Survival Ascended
+- `hl2dmserver` - Half-Life 2: Deathmatch
+- `hldmserver` - Half-Life Deathmatch
 - `kf1server` - Killing Floor
 - `kf2server` - Killing Floor 2
-- `tf2server` - Team Fortress 2
 - `pzserver` - Project Zomboid
-- `arkserver` - ARK: Survival Ascended
+- `synergyserver` - Synergy
+- `tf2server` - Team Fortress 2
+- `tfcserver` - Team Fortress Classic
 
 ## Console Access
 
@@ -209,52 +236,6 @@ screen -ls
 Session names match the service names (e.g., `kf1server`, `tf2server`).
 
 ## Configuration
-
-### Killing Floor
-
-- **Config Location:** `/opt/kf1server/System/`
-- **Default Map:** KF-WestLondon.rom
-- **Max Players:** 6
-
-### Killing Floor 2
-
-- **Config Location:** `/opt/kf2server/KFGame/Config/`
-- **Web Admin:** Port 8080 (configure in `KFWeb.ini`)
-- **Default Map:** KF-BioticsLab
-- **Max Players:** 6
-
-### Team Fortress 2
-
-- **Config Location:** `/opt/tf2server/tf/cfg/server.cfg`
-- **GSLT Config:** `/opt/tf2server/tf2server.conf`
-- **Default Map:** ctf_2fort
-- **Max Players:** 24
-
-To make the server public, add your GSLT:
-```bash
-# Edit the config file
-sudo nano /opt/tf2server/tf2server.conf
-
-# Add your token
-STEAM_GSLT_TOKEN="your_token_here"
-
-# Restart the server
-sudo systemctl restart tf2server
-```
-
-### Project Zomboid
-
-- **Config Location:** `/home/pzuser/Zomboid/Server/`
-- **Main Config:** `pzserver.ini`
-- **Sandbox Settings:** `pzserver_SandboxVars.lua`
-- **Default Map:** Muldraugh, KY
-- **Max Players:** 16
-- **Memory:** 2GB min, 4GB max (adjustable in script)
-
-**Important:** Change default passwords after installation:
-```bash
-sudo nano /home/pzuser/Zomboid/Server/pzserver.ini
-```
 
 ### ARK: Survival Ascended
 
@@ -280,11 +261,96 @@ sudo nano /home/user/gameservers/arkasa/ark-server-setup.sh
 # Example: MODS="928793,900062"
 ```
 
+### Half-Life 2: Deathmatch
+
+- **Config Location:** `/opt/hl2dmserver/hl2mp/cfg/server.cfg`
+- **GSLT Config:** `/opt/hl2dmserver/hl2dmserver.conf`
+- **Default Map:** dm_lockdown
+- **Max Players:** 16
+
+### Half-Life Deathmatch
+
+- **Config Location:** `/opt/hldmserver/valve/server.cfg`
+- **Default Map:** crossfire
+- **Max Players:** 16
+
+### Killing Floor
+
+- **Config Location:** `/opt/kf1server/System/`
+- **Default Map:** KF-WestLondon.rom
+- **Max Players:** 6
+
+### Killing Floor 2
+
+- **Config Location:** `/opt/kf2server/KFGame/Config/`
+- **Web Admin:** Port 8080 (configure in `KFWeb.ini`)
+- **Default Map:** KF-BioticsLab
+- **Max Players:** 6
+
+### Project Zomboid
+
+- **Config Location:** `/home/pzuser/Zomboid/Server/`
+- **Main Config:** `pzserver.ini`
+- **Sandbox Settings:** `pzserver_SandboxVars.lua`
+- **Default Map:** Muldraugh, KY
+- **Max Players:** 16
+- **Memory:** 2GB min, 4GB max (adjustable in script)
+
+**Important:** Change default passwords after installation:
+```bash
+sudo nano /home/pzuser/Zomboid/Server/pzserver.ini
+```
+
+### Synergy
+
+- **Config Location:** `/opt/synergyserver/synergy/cfg/server.cfg`
+- **Default Map:** d1_trainstation_01
+- **Max Players:** 8
+- **Note:** Co-op mod for Half-Life 2; players need HL2 to play
+
+### Team Fortress 2
+
+- **Config Location:** `/opt/tf2server/tf/cfg/server.cfg`
+- **GSLT Config:** `/opt/tf2server/tf2server.conf`
+- **Default Map:** ctf_2fort
+- **Max Players:** 24
+
+To make the server public, add your GSLT:
+```bash
+# Edit the config file
+sudo nano /opt/tf2server/tf2server.conf
+
+# Add your token
+STEAM_GSLT_TOKEN="your_token_here"
+
+# Restart the server
+sudo systemctl restart tf2server
+```
+
+### Team Fortress Classic
+
+- **Config Location:** `/opt/tfcserver/tfc/server.cfg`
+- **Default Map:** 2fort
+- **Max Players:** 24
+
 ## Firewall Configuration
 
 If using UFW (Uncomplicated Firewall):
 
 ```bash
+# ARK: Survival Ascended
+sudo ufw allow 7777/udp    # Game port
+sudo ufw allow 27015/udp   # Query port
+sudo ufw allow 27020/tcp   # RCON
+
+# Half-Life 2: Deathmatch
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Half-Life Deathmatch
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
 # Killing Floor
 sudo ufw allow 7707/udp
 sudo ufw allow 7708/udp
@@ -297,19 +363,22 @@ sudo ufw allow 7777/udp
 sudo ufw allow 27015/udp
 sudo ufw allow 8080/tcp    # Web admin
 
-# Team Fortress 2
-sudo ufw allow 27015/tcp
-sudo ufw allow 27015/udp
-
 # Project Zomboid
 sudo ufw allow 16261/udp
 sudo ufw allow 16262/udp
 sudo ufw allow 27015/tcp   # RCON
 
-# ARK: Survival Ascended
-sudo ufw allow 7777/udp    # Game port
-sudo ufw allow 27015/udp   # Query port
-sudo ufw allow 27020/tcp   # RCON
+# Synergy
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Team Fortress 2
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Team Fortress Classic
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
 ```
 
 ## Logging

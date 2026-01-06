@@ -20,35 +20,47 @@ MENU_TITLE="Silverware Game Servers"
 MENU_VERSION="1.0.0"
 
 # Dialog dimensions
-DIALOG_HEIGHT=18
-DIALOG_WIDTH=60
-DIALOG_MENU_HEIGHT=6
+DIALOG_HEIGHT=20
+DIALOG_WIDTH=70
+DIALOG_MENU_HEIGHT=10
 
 # =============================================================================
-# MENU OPTIONS
+# MENU OPTIONS (Alphabetical Order)
 # =============================================================================
 declare -A MENU_OPTIONS=(
-    [1]="Killing Floor"
-    [2]="Killing Floor 2"
-    [3]="Team Fortress 2"
-    [4]="Project Zomboid"
-    [5]="ARK: Survival Ascended"
+    [1]="ARK: Survival Ascended"
+    [2]="Half-Life 2: Deathmatch"
+    [3]="Half-Life Deathmatch"
+    [4]="Killing Floor"
+    [5]="Killing Floor 2"
+    [6]="Project Zomboid"
+    [7]="Synergy"
+    [8]="Team Fortress 2"
+    [9]="Team Fortress Classic"
 )
 
 declare -A MENU_SCRIPTS=(
-    [1]="${SCRIPT_DIR}/killingfloor/kf-server-setup.sh"
-    [2]="${SCRIPT_DIR}/killingfloor2/kf2-server-setup.sh"
-    [3]="${SCRIPT_DIR}/teamfortress2/tf2-server-setup.sh"
-    [4]="${SCRIPT_DIR}/projectzomboid/pz-server-setup.sh"
-    [5]="${SCRIPT_DIR}/arkasa/ark-server-setup.sh"
+    [1]="${SCRIPT_DIR}/arkasa/ark-server-setup.sh"
+    [2]="${SCRIPT_DIR}/hl2dm/hl2dm-server-setup.sh"
+    [3]="${SCRIPT_DIR}/hldm/hldm-server-setup.sh"
+    [4]="${SCRIPT_DIR}/killingfloor/kf-server-setup.sh"
+    [5]="${SCRIPT_DIR}/killingfloor2/kf2-server-setup.sh"
+    [6]="${SCRIPT_DIR}/projectzomboid/pz-server-setup.sh"
+    [7]="${SCRIPT_DIR}/synergy/synergy-server-setup.sh"
+    [8]="${SCRIPT_DIR}/teamfortress2/tf2-server-setup.sh"
+    [9]="${SCRIPT_DIR}/tfc/tfc-server-setup.sh"
 )
 
 declare -A MENU_DESCRIPTIONS=(
-    [1]="Classic cooperative survival horror FPS"
-    [2]="Sequel with updated graphics and gameplay"
-    [3]="Team-based multiplayer FPS by Valve"
-    [4]="Open-world zombie survival RPG"
-    [5]="Dinosaur survival sandbox MMO"
+    [1]="Dinosaur survival sandbox MMO"
+    [2]="Source engine deathmatch"
+    [3]="Classic GoldSrc deathmatch"
+    [4]="Cooperative survival horror FPS"
+    [5]="Cooperative survival horror sequel"
+    [6]="Open-world zombie survival RPG"
+    [7]="Half-Life 2 co-op mod"
+    [8]="Team-based multiplayer FPS"
+    [9]="Classic team-based multiplayer"
 )
 
 # =============================================================================
@@ -105,7 +117,7 @@ show_text_menu() {
         read -r choice
 
         case "$choice" in
-            [1-5])
+            [1-9])
                 run_setup "$choice"
                 ;;
             q|Q)
