@@ -1,4 +1,4 @@
-# Silverware Game Servers
+# Silverware Games
 
 A collection of automated setup scripts for deploying dedicated game servers on Linux. Each script handles the complete installation process including SteamCMD setup, game file downloads, systemd service configuration, and server startup.
 
@@ -6,10 +6,28 @@ A collection of automated setup scripts for deploying dedicated game servers on 
 
 | Game | Script | Steam App ID | Default Port |
 |------|--------|--------------|--------------|
+| Abiotic Factor | `abioticfactor/af-server-setup.sh` | 2857200 | 7777 |
+| ARK: Survival Ascended | `arkasa/ark-server-setup.sh` | 2430930 | 7777 |
+| Black Mesa | `blackmesa/bm-server-setup.sh` | 346680 | 27015 |
+| City of Heroes | `cityofheroes/coh-server-setup.sh` | N/A (VM) | 2104 |
+| Counter-Strike | `counterstrike/cs-server-setup.sh` | 90 | 27015 |
+| Counter-Strike 2 | `counterstrike2/cs2-server-setup.sh` | 730 | 27015 |
+| Half-Life Deathmatch | `hldm/hldm-server-setup.sh` | 90 | 27015 |
+| Half-Life 2: Deathmatch | `hl2dm/hl2dm-server-setup.sh` | 232370 | 27015 |
+| HumanitZ | `humanitz/humanitz-server-setup.sh` | 2372920 | 7777 |
 | Killing Floor | `killingfloor/kf-server-setup.sh` | 215360 | 7707 |
 | Killing Floor 2 | `killingfloor2/kf2-server-setup.sh` | 232130 | 7777 |
-| Team Fortress 2 | `teamfortress2/tf2-server-setup.sh` | 232250 | 27015 |
 | Project Zomboid | `projectzomboid/pz-server-setup.sh` | 380870 | 16261 |
+| San Andreas Multiplayer | `samp/samp-server-setup.sh` | N/A | 7777 |
+| Starbound | `starbound/starbound-server-setup.sh` | 211820 | 21025 |
+| Star Wars Galaxies EMU | `swgemu/swgemu-server-setup.sh` | N/A | 44419 |
+| Sven Co-op | `svencoop/svencoop-server-setup.sh` | 276060 | 27015 |
+| Synergy | `synergy/synergy-server-setup.sh` | 17520 | 27015 |
+| Team Fortress Classic | `tfc/tfc-server-setup.sh` | 20 | 27015 |
+| Team Fortress 2 | `teamfortress2/tf2-server-setup.sh` | 232250 | 27015 |
+| Unreal Tournament 99 | `ut99/ut99-server-setup.sh` | N/A | 7777 |
+| Unreal Tournament 2004 | `ut2004/ut2004-server-setup.sh` | N/A | 7777 |
+| World of Warcraft | `azerothcore/wow-server-setup.sh` | N/A | 3724 |
 
 ## Quick Start
 
@@ -27,8 +45,8 @@ sudo ./setup.sh
 ### System Requirements
 - Linux (Debian/Ubuntu recommended)
 - Root access (sudo)
-- Minimum 2GB RAM (4GB+ recommended for Project Zomboid)
-- SSD storage recommended for faster load times
+- Minimum 2GB RAM (4GB+ for Project Zomboid, 16GB+ for ARK ASA)
+- SSD storage recommended (ARK ASA requires ~50GB+)
 
 ### Dependencies
 The scripts will check for these dependencies automatically:
@@ -47,15 +65,31 @@ sudo apt-get install curl tar screen dialog
 
 ### Game-Specific Requirements
 
-**Team Fortress 2:**
-- Steam Game Server Login Token (GSLT) for public server listing
-- Get your token at: https://steamcommunity.com/dev/managegameservers
+**GoldSrc Games (Half-Life DM, TFC):**
+- 32-bit libraries on 64-bit systems
+```bash
+sudo apt-get install lib32gcc-s1
+```
+
+**Source Games (HL2DM, TF2, Synergy):**
+- 32-bit libraries on 64-bit systems
+- GSLT recommended for public server listing
+- Get tokens at: https://steamcommunity.com/dev/managegameservers
 
 **Project Zomboid:**
 - Java 17 or higher
 - 32-bit libraries on 64-bit systems
 ```bash
 sudo apt-get install openjdk-17-jre-headless lib32gcc-s1
+```
+
+**ARK: Survival Ascended:**
+- Minimum 16GB RAM (32GB recommended)
+- 50GB+ free disk space
+- Proton GE (automatically installed by script)
+- wget for downloading Proton
+```bash
+sudo apt-get install wget
 ```
 
 ## Project Structure
@@ -66,14 +100,50 @@ gameservers/
 ├── README.md                     # This file
 ├── lib/
 │   └── common.sh                 # Shared functions and utilities
+├── abioticfactor/
+│   └── af-server-setup.sh        # Abiotic Factor
+├── arkasa/
+│   └── ark-server-setup.sh       # ARK: Survival Ascended
+├── blackmesa/
+│   └── bm-server-setup.sh        # Black Mesa
+├── cityofheroes/
+│   └── coh-server-setup.sh       # City of Heroes (Windows VM)
+├── counterstrike/
+│   └── cs-server-setup.sh        # Counter-Strike
+├── counterstrike2/
+│   └── cs2-server-setup.sh       # Counter-Strike 2
+├── hl2dm/
+│   └── hl2dm-server-setup.sh     # Half-Life 2: Deathmatch
+├── hldm/
+│   └── hldm-server-setup.sh      # Half-Life Deathmatch
+├── humanitz/
+│   └── humanitz-server-setup.sh  # HumanitZ
 ├── killingfloor/
-│   └── kf-server-setup.sh        # Killing Floor 1 setup
+│   └── kf-server-setup.sh        # Killing Floor
 ├── killingfloor2/
-│   └── kf2-server-setup.sh       # Killing Floor 2 setup
+│   └── kf2-server-setup.sh       # Killing Floor 2
+├── projectzomboid/
+│   └── pz-server-setup.sh        # Project Zomboid
+├── samp/
+│   └── samp-server-setup.sh      # San Andreas Multiplayer
+├── starbound/
+│   └── starbound-server-setup.sh # Starbound
+├── swgemu/
+│   └── swgemu-server-setup.sh    # Star Wars Galaxies EMU
+├── svencoop/
+│   └── svencoop-server-setup.sh  # Sven Co-op
+├── synergy/
+│   └── synergy-server-setup.sh   # Synergy
 ├── teamfortress2/
-│   └── tf2-server-setup.sh       # Team Fortress 2 setup
-└── projectzomboid/
-    └── pz-server-setup.sh        # Project Zomboid setup
+│   └── tf2-server-setup.sh       # Team Fortress 2
+├── tfc/
+│   └── tfc-server-setup.sh       # Team Fortress Classic
+├── ut99/
+│   └── ut99-server-setup.sh      # Unreal Tournament 99
+├── ut2004/
+│   └── ut2004-server-setup.sh    # Unreal Tournament 2004
+└── azerothcore/
+    └── wow-server-setup.sh       # World of Warcraft
 ```
 
 ## How It Works
@@ -138,10 +208,28 @@ Each game server script follows the same pattern:
 | Component | Location |
 |-----------|----------|
 | SteamCMD | `/opt/steamcmd/` |
+| Abiotic Factor | `/opt/afserver/` |
+| ARK: Survival Ascended | `/opt/arkserver/` |
+| Black Mesa | `/opt/bmserver/` |
+| City of Heroes | `/opt/cohserver/` (VM + files) |
+| Counter-Strike | `/opt/csserver/` |
+| Counter-Strike 2 | `/opt/cs2server/` |
+| Half-Life Deathmatch | `/opt/hldmserver/` |
+| Half-Life 2: Deathmatch | `/opt/hl2dmserver/` |
+| HumanitZ | `/opt/humanitzserver/` |
 | Killing Floor | `/opt/kf1server/` |
 | Killing Floor 2 | `/opt/kf2server/` |
-| Team Fortress 2 | `/opt/tf2server/` |
 | Project Zomboid | `/opt/pzserver/` |
+| San Andreas Multiplayer | `/opt/sampserver/` |
+| Starbound | `/opt/starboundserver/` |
+| Star Wars Galaxies EMU | `/opt/swgemu/` |
+| Sven Co-op | `/opt/svencoopserver/` |
+| Synergy | `/opt/synergyserver/` |
+| Team Fortress Classic | `/opt/tfcserver/` |
+| Team Fortress 2 | `/opt/tf2server/` |
+| Unreal Tournament 99 | `/opt/ut99server/` |
+| Unreal Tournament 2004 | `/opt/ut2004server/` |
+| World of Warcraft | `/opt/azerothcore/` |
 | Log Files | `/var/log/gameservers/` |
 
 ## Service Management
@@ -172,10 +260,28 @@ sudo journalctl -u <service-name> -f
 ```
 
 Service names:
+- `afserver` - Abiotic Factor
+- `arkserver` - ARK: Survival Ascended
+- `bmserver` - Black Mesa
+- `cohserver` - City of Heroes (VM auto-start)
+- `csserver` - Counter-Strike
+- `cs2server` - Counter-Strike 2
+- `hldmserver` - Half-Life Deathmatch
+- `hl2dmserver` - Half-Life 2: Deathmatch
+- `humanitzserver` - HumanitZ
 - `kf1server` - Killing Floor
 - `kf2server` - Killing Floor 2
-- `tf2server` - Team Fortress 2
 - `pzserver` - Project Zomboid
+- `sampserver` - San Andreas Multiplayer
+- `starboundserver` - Starbound
+- `swgemuserver` - Star Wars Galaxies EMU
+- `svencoopserver` - Sven Co-op
+- `synergyserver` - Synergy
+- `tfcserver` - Team Fortress Classic
+- `tf2server` - Team Fortress 2
+- `ut99server` - Unreal Tournament 99
+- `ut2004server` - Unreal Tournament 2004
+- `wowauth` / `wowworld` - World of Warcraft (auth + world)
 
 ## Console Access
 
@@ -196,6 +302,107 @@ Session names match the service names (e.g., `kf1server`, `tf2server`).
 
 ## Configuration
 
+### ARK: Survival Ascended
+
+- **Config Location:** `/opt/arkserver/ShooterGame/Saved/Config/WindowsServer/`
+- **Main Config:** `GameUserSettings.ini`
+- **Game Rules:** `Game.ini`
+- **Default Map:** TheIsland_WP
+- **Max Players:** 70
+- **Requires:** Proton GE for Windows compatibility
+
+**Available Maps:**
+- `TheIsland_WP` - The Island
+- `ScorchedEarth_WP` - Scorched Earth
+- `Aberration_WP` - Aberration
+- `TheCenter_WP` - The Center
+- `Ragnarok_WP` - Ragnarok
+- `Extinction_WP` - Extinction
+
+**Adding Mods:** Edit the `MODS` variable in the setup script:
+```bash
+sudo nano /home/user/gameservers/arkasa/ark-server-setup.sh
+# Find and edit: MODS=""
+# Example: MODS="928793,900062"
+```
+
+### Black Mesa
+
+- **Config Location:** `/opt/bmserver/bms/cfg/server.cfg`
+- **GSLT Config:** `/opt/bmserver/bmserver.conf`
+- **Default Map:** dm_bounce
+- **Max Players:** 16
+
+**Available Maps:**
+- `dm_bounce`, `dm_chopper`, `dm_crossfire`, `dm_gasworks`
+- `dm_lambdabunker`, `dm_power`, `dm_rail`, `dm_stack`
+- `dm_stalkyard`, `dm_subtransit`, `dm_undertow`
+
+### City of Heroes
+
+- **Type:** Windows VM (QEMU/KVM)
+- **VM Location:** `/opt/cohserver/vm/`
+- **Shared Files:** `/opt/cohserver/shared/`
+- **Auth Port:** 2104
+- **DB Port:** 2105
+- **Game Ports:** 7000-7100
+- **RAM Required:** 8GB minimum, 32GB recommended
+- **Note:** Runs Ouroboros Volume 2 server in Windows VM
+
+**Setup Overview:**
+1. Script creates a Windows VM using QEMU/KVM
+2. Download Windows Server Evaluation ISO
+3. Download CoH files from OuroDev (torrent or CI site)
+4. Install Windows in VM
+5. Run Ouroboros self-installer batch files in VM
+
+**VM Management:**
+```bash
+virsh start coh-windows-server    # Start VM
+virsh shutdown coh-windows-server # Stop VM
+virt-manager                      # GUI management
+```
+
+**Resources:**
+- OuroDev Wiki: https://wiki.ourodev.com/
+- Server Setup: https://wiki.ourodev.com/Volume_2_Server_Setup
+- VM Guide: https://wiki.ourodev.com/Volume_2_VMs_%26_Self_Installer
+
+### Counter-Strike
+
+- **Config Location:** `/opt/csserver/cstrike/server.cfg`
+- **Default Map:** de_dust2
+- **Max Players:** 20
+- **Note:** Classic tactical shooter; uses GoldSrc engine
+
+### Counter-Strike 2
+
+- **Config Location:** `/opt/cs2server/game/csgo/cfg/server.cfg`
+- **GSLT Config:** `/opt/cs2server/cs2server.conf`
+- **Default Map:** de_dust2
+- **Max Players:** 20
+- **Note:** GSLT is required for server to function properly
+
+**Game Modes:**
+- `game_type 0, game_mode 0` - Casual
+- `game_type 0, game_mode 1` - Competitive
+- `game_type 1, game_mode 0` - Arms Race
+- `game_type 1, game_mode 1` - Demolition
+- `game_type 1, game_mode 2` - Deathmatch
+
+### Half-Life Deathmatch
+
+- **Config Location:** `/opt/hldmserver/valve/server.cfg`
+- **Default Map:** crossfire
+- **Max Players:** 16
+
+### Half-Life 2: Deathmatch
+
+- **Config Location:** `/opt/hl2dmserver/hl2mp/cfg/server.cfg`
+- **GSLT Config:** `/opt/hl2dmserver/hl2dmserver.conf`
+- **Default Map:** dm_lockdown
+- **Max Players:** 16
+
 ### Killing Floor
 
 - **Config Location:** `/opt/kf1server/System/`
@@ -208,6 +415,27 @@ Session names match the service names (e.g., `kf1server`, `tf2server`).
 - **Web Admin:** Port 8080 (configure in `KFWeb.ini`)
 - **Default Map:** KF-BioticsLab
 - **Max Players:** 6
+
+### Project Zomboid
+
+- **Config Location:** `/home/pzuser/Zomboid/Server/`
+- **Main Config:** `pzserver.ini`
+- **Sandbox Settings:** `pzserver_SandboxVars.lua`
+- **Default Map:** Muldraugh, KY
+- **Max Players:** 16
+- **Memory:** 2GB min, 4GB max (adjustable in script)
+
+**Important:** Change default passwords after installation:
+```bash
+sudo nano /home/pzuser/Zomboid/Server/pzserver.ini
+```
+
+### Synergy
+
+- **Config Location:** `/opt/synergyserver/synergy/cfg/server.cfg`
+- **Default Map:** d1_trainstation_01
+- **Max Players:** 8
+- **Note:** Co-op mod for Half-Life 2; players need HL2 to play
 
 ### Team Fortress 2
 
@@ -228,25 +456,177 @@ STEAM_GSLT_TOKEN="your_token_here"
 sudo systemctl restart tf2server
 ```
 
-### Project Zomboid
+### Team Fortress Classic
 
-- **Config Location:** `/home/pzuser/Zomboid/Server/`
-- **Main Config:** `pzserver.ini`
-- **Sandbox Settings:** `pzserver_SandboxVars.lua`
-- **Default Map:** Muldraugh, KY
+- **Config Location:** `/opt/tfcserver/tfc/server.cfg`
+- **Default Map:** 2fort
+- **Max Players:** 24
+
+### Abiotic Factor
+
+- **Config Location:** Edit startup parameters in systemd service
+- **Default Port:** 7777
+- **Query Port:** 27015
+- **Max Players:** 6
+- **Note:** Co-op sci-fi survival crafting game
+
+### HumanitZ
+
+- **Config Location:** Edit startup parameters in systemd service
+- **Default Port:** 7777
+- **Query Port:** 27015
 - **Max Players:** 16
-- **Memory:** 2GB min, 4GB max (adjustable in script)
+- **Note:** Open-world zombie survival game
 
-**Important:** Change default passwords after installation:
+### San Andreas Multiplayer
+
+- **Config Location:** `/opt/sampserver/server.cfg`
+- **Default Port:** 7777
+- **Max Players:** 50
+- **Gamemodes:** Located in `/opt/sampserver/gamemodes/`
+- **Note:** GTA San Andreas multiplayer mod
+
+### Starbound
+
+- **Config Location:** `/opt/starboundserver/storage/starbound_server.config`
+- **Default Port:** 21025
+- **Max Players:** 8
+- **Note:** Sandbox exploration adventure
+
+### Sven Co-op
+
+- **Config Location:** `/opt/svencoopserver/svencoop/server.cfg`
+- **Default Map:** svencoop1
+- **Default Port:** 27015
+- **Max Players:** 12
+- **Note:** Half-Life co-op mod
+
+### Unreal Tournament 99
+
+- **Config Location:** `/opt/ut99server/System/UnrealTournament.ini`
+- **Default Map:** DM-Deck16][
+- **Default Port:** 7777
+- **Query Port:** 7778
+- **Max Players:** 16
+- **Note:** Requires original game files
+
+**Game Modes:**
+- Deathmatch: `Botpack.DeathMatchPlus`
+- Team DM: `Botpack.TeamGamePlus`
+- CTF: `Botpack.CTFGame`
+- Assault: `Botpack.Assault`
+- Domination: `Botpack.Domination`
+
+### Unreal Tournament 2004
+
+- **Config Location:** `/opt/ut2004server/System/UT2004.ini`
+- **Default Map:** DM-Rankin
+- **Default Port:** 7777
+- **Query Port:** 7778
+- **Web Admin Port:** 8075
+- **Max Players:** 16
+- **Note:** Requires original game files
+
+**Game Modes:**
+- Deathmatch: `XGame.xDeathMatch`
+- Team DM: `XGame.xTeamGame`
+- CTF: `XGame.xCTFGame`
+- Bombing Run: `XGame.xBombingRun`
+- Onslaught: `Onslaught.ONSOnslaughtGame`
+- Assault: `UT2k4Assault.UT2k4AssaultGame`
+
+### Star Wars Galaxies EMU
+
+- **Type:** SWGEmu Core3 server
+- **Install Location:** `/opt/swgemu/`
+- **Binary Directory:** `/opt/swgemu/workspace/Core3/MMOCoreORB/bin/`
+- **Config File:** `bin/conf/config-local.lua`
+- **TRE Files:** `/opt/swgemu/tre/`
+- **Login Port:** 44419
+- **Zone Port:** 44453
+- **Status Port:** 44455
+- **Note:** Requires original SWG .tre files
+
+**Build Requirements:**
+- Debian 12 / Ubuntu 22.04+
+- Clang 19
+- MariaDB
+- 8GB+ RAM, 50GB+ disk
+
+**Resources:**
+- GitHub: https://github.com/swgemu/Core3
+- SWGEmu Wiki: https://www.swgemu.com/wiki/
+
+### World of Warcraft (AzerothCore)
+
+- **Type:** AzerothCore WotLK 3.3.5a server
+- **Install Location:** `/opt/azerothcore/`
+- **Server Directory:** `/opt/azerothcore/server/`
+- **Data Directory:** `/opt/azerothcore/data/`
+- **Auth Config:** `/opt/azerothcore/server/etc/authserver.conf`
+- **World Config:** `/opt/azerothcore/server/etc/worldserver.conf`
+- **Auth Port:** 3724
+- **World Port:** 8085
+- **Note:** Requires WoW 3.3.5a client for data extraction
+
+**Databases:**
+- `acore_auth` - Authentication/accounts
+- `acore_world` - Game world data
+- `acore_characters` - Character data
+
+**Create Account:**
 ```bash
-sudo nano /home/pzuser/Zomboid/Server/pzserver.ini
+/opt/azerothcore/server/bin/create_account.sh <user> <pass> [gmlevel]
+# gmlevel: 0=player, 1=mod, 2=gm, 3=admin
 ```
+
+**Client Setup:**
+Edit `realmlist.wtf` in client Data folder:
+```
+set realmlist <your-server-ip>
+```
+
+**Resources:**
+- Wiki: https://www.azerothcore.org/wiki/
+- GitHub: https://github.com/azerothcore/azerothcore-wotlk
 
 ## Firewall Configuration
 
 If using UFW (Uncomplicated Firewall):
 
 ```bash
+# ARK: Survival Ascended
+sudo ufw allow 7777/udp    # Game port
+sudo ufw allow 27015/udp   # Query port
+sudo ufw allow 27020/tcp   # RCON
+
+# Black Mesa
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# City of Heroes (forward to VM)
+sudo ufw allow 2104/tcp    # Auth server
+sudo ufw allow 2105/tcp    # DB server
+sudo ufw allow 7000:7100/udp  # Game ports
+sudo ufw allow 8080/tcp    # Web admin
+
+# Counter-Strike
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Counter-Strike 2
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+sudo ufw allow 27020/udp   # SourceTV
+
+# Half-Life Deathmatch
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Half-Life 2: Deathmatch
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
 # Killing Floor
 sudo ufw allow 7707/udp
 sudo ufw allow 7708/udp
@@ -259,14 +639,59 @@ sudo ufw allow 7777/udp
 sudo ufw allow 27015/udp
 sudo ufw allow 8080/tcp    # Web admin
 
-# Team Fortress 2
-sudo ufw allow 27015/tcp
-sudo ufw allow 27015/udp
-
 # Project Zomboid
 sudo ufw allow 16261/udp
 sudo ufw allow 16262/udp
 sudo ufw allow 27015/tcp   # RCON
+
+# Synergy
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Team Fortress 2
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Team Fortress Classic
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Abiotic Factor
+sudo ufw allow 7777/udp
+sudo ufw allow 27015/udp   # Query port
+
+# HumanitZ
+sudo ufw allow 7777/udp
+sudo ufw allow 27015/udp   # Query port
+
+# San Andreas Multiplayer
+sudo ufw allow 7777/udp
+
+# Starbound
+sudo ufw allow 21025/tcp
+
+# Sven Co-op
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Unreal Tournament 99
+sudo ufw allow 7777/udp
+sudo ufw allow 7778/udp    # Query port
+
+# Unreal Tournament 2004
+sudo ufw allow 7777/udp
+sudo ufw allow 7778/udp    # Query port
+sudo ufw allow 8075/tcp    # Web admin
+
+# Star Wars Galaxies EMU
+sudo ufw allow 44419/tcp   # Login
+sudo ufw allow 44453/tcp   # Zone
+sudo ufw allow 44455/tcp   # Status
+sudo ufw allow 44462/udp   # Ping
+
+# World of Warcraft
+sudo ufw allow 3724/tcp    # Auth server
+sudo ufw allow 8085/tcp    # World server
 ```
 
 ## Logging

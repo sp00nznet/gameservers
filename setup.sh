@@ -20,32 +20,86 @@ MENU_TITLE="Silverware Game Servers"
 MENU_VERSION="1.0.0"
 
 # Dialog dimensions
-DIALOG_HEIGHT=18
-DIALOG_WIDTH=60
-DIALOG_MENU_HEIGHT=6
+DIALOG_HEIGHT=20
+DIALOG_WIDTH=70
+DIALOG_MENU_HEIGHT=24
 
 # =============================================================================
-# MENU OPTIONS
+# MENU OPTIONS (Alphabetical Order)
 # =============================================================================
 declare -A MENU_OPTIONS=(
-    [1]="Killing Floor"
-    [2]="Killing Floor 2"
-    [3]="Team Fortress 2"
-    [4]="Project Zomboid"
+    [1]="Abiotic Factor"
+    [2]="ARK: Survival Ascended"
+    [3]="Black Mesa"
+    [4]="City of Heroes"
+    [5]="Counter-Strike"
+    [6]="Counter-Strike 2"
+    [7]="Half-Life Deathmatch"
+    [8]="Half-Life 2: Deathmatch"
+    [9]="HumanitZ"
+    [10]="Killing Floor"
+    [11]="Killing Floor 2"
+    [12]="Project Zomboid"
+    [13]="San Andreas Multiplayer"
+    [14]="Starbound"
+    [15]="Star Wars Galaxies EMU"
+    [16]="Sven Co-op"
+    [17]="Synergy"
+    [18]="Team Fortress Classic"
+    [19]="Team Fortress 2"
+    [20]="Unreal Tournament 99"
+    [21]="Unreal Tournament 2004"
+    [22]="World of Warcraft"
 )
 
 declare -A MENU_SCRIPTS=(
-    [1]="${SCRIPT_DIR}/killingfloor/kf-server-setup.sh"
-    [2]="${SCRIPT_DIR}/killingfloor2/kf2-server-setup.sh"
-    [3]="${SCRIPT_DIR}/teamfortress2/tf2-server-setup.sh"
-    [4]="${SCRIPT_DIR}/projectzomboid/pz-server-setup.sh"
+    [1]="${SCRIPT_DIR}/abioticfactor/af-server-setup.sh"
+    [2]="${SCRIPT_DIR}/arkasa/ark-server-setup.sh"
+    [3]="${SCRIPT_DIR}/blackmesa/bm-server-setup.sh"
+    [4]="${SCRIPT_DIR}/cityofheroes/coh-server-setup.sh"
+    [5]="${SCRIPT_DIR}/counterstrike/cs-server-setup.sh"
+    [6]="${SCRIPT_DIR}/counterstrike2/cs2-server-setup.sh"
+    [7]="${SCRIPT_DIR}/hldm/hldm-server-setup.sh"
+    [8]="${SCRIPT_DIR}/hl2dm/hl2dm-server-setup.sh"
+    [9]="${SCRIPT_DIR}/humanitz/humanitz-server-setup.sh"
+    [10]="${SCRIPT_DIR}/killingfloor/kf-server-setup.sh"
+    [11]="${SCRIPT_DIR}/killingfloor2/kf2-server-setup.sh"
+    [12]="${SCRIPT_DIR}/projectzomboid/pz-server-setup.sh"
+    [13]="${SCRIPT_DIR}/samp/samp-server-setup.sh"
+    [14]="${SCRIPT_DIR}/starbound/starbound-server-setup.sh"
+    [15]="${SCRIPT_DIR}/swgemu/swgemu-server-setup.sh"
+    [16]="${SCRIPT_DIR}/svencoop/svencoop-server-setup.sh"
+    [17]="${SCRIPT_DIR}/synergy/synergy-server-setup.sh"
+    [18]="${SCRIPT_DIR}/tfc/tfc-server-setup.sh"
+    [19]="${SCRIPT_DIR}/teamfortress2/tf2-server-setup.sh"
+    [20]="${SCRIPT_DIR}/ut99/ut99-server-setup.sh"
+    [21]="${SCRIPT_DIR}/ut2004/ut2004-server-setup.sh"
+    [22]="${SCRIPT_DIR}/azerothcore/wow-server-setup.sh"
 )
 
 declare -A MENU_DESCRIPTIONS=(
-    [1]="Classic cooperative survival horror FPS"
-    [2]="Sequel with updated graphics and gameplay"
-    [3]="Team-based multiplayer FPS by Valve"
-    [4]="Open-world zombie survival RPG"
+    [1]="Co-op sci-fi survival crafting"
+    [2]="Dinosaur survival sandbox MMO"
+    [3]="Half-Life remake deathmatch"
+    [4]="Superhero MMORPG (Windows VM)"
+    [5]="Classic tactical shooter"
+    [6]="Modern tactical shooter"
+    [7]="Classic GoldSrc deathmatch"
+    [8]="Source engine deathmatch"
+    [9]="Open-world zombie survival"
+    [10]="Cooperative survival horror FPS"
+    [11]="Cooperative survival horror sequel"
+    [12]="Open-world zombie survival RPG"
+    [13]="GTA San Andreas multiplayer mod"
+    [14]="Sandbox exploration adventure"
+    [15]="Pre-CU SWG emulator"
+    [16]="Half-Life co-op mod"
+    [17]="Half-Life 2 co-op mod"
+    [18]="Classic team-based multiplayer"
+    [19]="Team-based multiplayer FPS"
+    [20]="Classic arena shooter"
+    [21]="Arena shooter sequel"
+    [22]="WotLK 3.3.5a private server"
 )
 
 # =============================================================================
@@ -102,7 +156,7 @@ show_text_menu() {
         read -r choice
 
         case "$choice" in
-            [1-4])
+            [1-9]|1[0-9]|2[0-2])
                 run_setup "$choice"
                 ;;
             q|Q)
