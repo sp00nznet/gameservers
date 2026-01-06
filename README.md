@@ -9,6 +9,7 @@ A collection of automated setup scripts for deploying dedicated game servers on 
 | Abiotic Factor | `abioticfactor/af-server-setup.sh` | 2857200 | 7777 |
 | ARK: Survival Ascended | `arkasa/ark-server-setup.sh` | 2430930 | 7777 |
 | Black Mesa | `blackmesa/bm-server-setup.sh` | 346680 | 27015 |
+| City of Heroes | `cityofheroes/coh-server-setup.sh` | N/A (VM) | 2104 |
 | Counter-Strike | `counterstrike/cs-server-setup.sh` | 90 | 27015 |
 | Counter-Strike 2 | `counterstrike2/cs2-server-setup.sh` | 730 | 27015 |
 | Half-Life Deathmatch | `hldm/hldm-server-setup.sh` | 90 | 27015 |
@@ -103,6 +104,8 @@ gameservers/
 │   └── ark-server-setup.sh       # ARK: Survival Ascended
 ├── blackmesa/
 │   └── bm-server-setup.sh        # Black Mesa
+├── cityofheroes/
+│   └── coh-server-setup.sh       # City of Heroes (Windows VM)
 ├── counterstrike/
 │   └── cs-server-setup.sh        # Counter-Strike
 ├── counterstrike2/
@@ -202,6 +205,7 @@ Each game server script follows the same pattern:
 | Abiotic Factor | `/opt/afserver/` |
 | ARK: Survival Ascended | `/opt/arkserver/` |
 | Black Mesa | `/opt/bmserver/` |
+| City of Heroes | `/opt/cohserver/` (VM + files) |
 | Counter-Strike | `/opt/csserver/` |
 | Counter-Strike 2 | `/opt/cs2server/` |
 | Half-Life Deathmatch | `/opt/hldmserver/` |
@@ -251,6 +255,7 @@ Service names:
 - `afserver` - Abiotic Factor
 - `arkserver` - ARK: Survival Ascended
 - `bmserver` - Black Mesa
+- `cohserver` - City of Heroes (VM auto-start)
 - `csserver` - Counter-Strike
 - `cs2server` - Counter-Strike 2
 - `hldmserver` - Half-Life Deathmatch
@@ -322,6 +327,36 @@ sudo nano /home/user/gameservers/arkasa/ark-server-setup.sh
 - `dm_bounce`, `dm_chopper`, `dm_crossfire`, `dm_gasworks`
 - `dm_lambdabunker`, `dm_power`, `dm_rail`, `dm_stack`
 - `dm_stalkyard`, `dm_subtransit`, `dm_undertow`
+
+### City of Heroes
+
+- **Type:** Windows VM (QEMU/KVM)
+- **VM Location:** `/opt/cohserver/vm/`
+- **Shared Files:** `/opt/cohserver/shared/`
+- **Auth Port:** 2104
+- **DB Port:** 2105
+- **Game Ports:** 7000-7100
+- **RAM Required:** 8GB minimum, 32GB recommended
+- **Note:** Runs Ouroboros Volume 2 server in Windows VM
+
+**Setup Overview:**
+1. Script creates a Windows VM using QEMU/KVM
+2. Download Windows Server Evaluation ISO
+3. Download CoH files from OuroDev (torrent or CI site)
+4. Install Windows in VM
+5. Run Ouroboros self-installer batch files in VM
+
+**VM Management:**
+```bash
+virsh start coh-windows-server    # Start VM
+virsh shutdown coh-windows-server # Stop VM
+virt-manager                      # GUI management
+```
+
+**Resources:**
+- OuroDev Wiki: https://wiki.ourodev.com/
+- Server Setup: https://wiki.ourodev.com/Volume_2_Server_Setup
+- VM Guide: https://wiki.ourodev.com/Volume_2_VMs_%26_Self_Installer
 
 ### Counter-Strike
 
@@ -503,6 +538,12 @@ sudo ufw allow 27020/tcp   # RCON
 # Black Mesa
 sudo ufw allow 27015/tcp
 sudo ufw allow 27015/udp
+
+# City of Heroes (forward to VM)
+sudo ufw allow 2104/tcp    # Auth server
+sudo ufw allow 2105/tcp    # DB server
+sudo ufw allow 7000:7100/udp  # Game ports
+sudo ufw allow 8080/tcp    # Web admin
 
 # Counter-Strike
 sudo ufw allow 27015/tcp
