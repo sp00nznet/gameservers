@@ -22,7 +22,7 @@ MENU_VERSION="1.0.0"
 # Dialog dimensions
 DIALOG_HEIGHT=20
 DIALOG_WIDTH=70
-DIALOG_MENU_HEIGHT=20
+DIALOG_MENU_HEIGHT=24
 
 # =============================================================================
 # MENU OPTIONS (Alphabetical Order)
@@ -42,12 +42,14 @@ declare -A MENU_OPTIONS=(
     [12]="Project Zomboid"
     [13]="San Andreas Multiplayer"
     [14]="Starbound"
-    [15]="Sven Co-op"
-    [16]="Synergy"
-    [17]="Team Fortress Classic"
-    [18]="Team Fortress 2"
-    [19]="Unreal Tournament 99"
-    [20]="Unreal Tournament 2004"
+    [15]="Star Wars Galaxies EMU"
+    [16]="Sven Co-op"
+    [17]="Synergy"
+    [18]="Team Fortress Classic"
+    [19]="Team Fortress 2"
+    [20]="Unreal Tournament 99"
+    [21]="Unreal Tournament 2004"
+    [22]="World of Warcraft"
 )
 
 declare -A MENU_SCRIPTS=(
@@ -65,12 +67,14 @@ declare -A MENU_SCRIPTS=(
     [12]="${SCRIPT_DIR}/projectzomboid/pz-server-setup.sh"
     [13]="${SCRIPT_DIR}/samp/samp-server-setup.sh"
     [14]="${SCRIPT_DIR}/starbound/starbound-server-setup.sh"
-    [15]="${SCRIPT_DIR}/svencoop/svencoop-server-setup.sh"
-    [16]="${SCRIPT_DIR}/synergy/synergy-server-setup.sh"
-    [17]="${SCRIPT_DIR}/tfc/tfc-server-setup.sh"
-    [18]="${SCRIPT_DIR}/teamfortress2/tf2-server-setup.sh"
-    [19]="${SCRIPT_DIR}/ut99/ut99-server-setup.sh"
-    [20]="${SCRIPT_DIR}/ut2004/ut2004-server-setup.sh"
+    [15]="${SCRIPT_DIR}/swgemu/swgemu-server-setup.sh"
+    [16]="${SCRIPT_DIR}/svencoop/svencoop-server-setup.sh"
+    [17]="${SCRIPT_DIR}/synergy/synergy-server-setup.sh"
+    [18]="${SCRIPT_DIR}/tfc/tfc-server-setup.sh"
+    [19]="${SCRIPT_DIR}/teamfortress2/tf2-server-setup.sh"
+    [20]="${SCRIPT_DIR}/ut99/ut99-server-setup.sh"
+    [21]="${SCRIPT_DIR}/ut2004/ut2004-server-setup.sh"
+    [22]="${SCRIPT_DIR}/azerothcore/wow-server-setup.sh"
 )
 
 declare -A MENU_DESCRIPTIONS=(
@@ -88,12 +92,14 @@ declare -A MENU_DESCRIPTIONS=(
     [12]="Open-world zombie survival RPG"
     [13]="GTA San Andreas multiplayer mod"
     [14]="Sandbox exploration adventure"
-    [15]="Half-Life co-op mod"
-    [16]="Half-Life 2 co-op mod"
-    [17]="Classic team-based multiplayer"
-    [18]="Team-based multiplayer FPS"
-    [19]="Classic arena shooter"
-    [20]="Arena shooter sequel"
+    [15]="Pre-CU SWG emulator"
+    [16]="Half-Life co-op mod"
+    [17]="Half-Life 2 co-op mod"
+    [18]="Classic team-based multiplayer"
+    [19]="Team-based multiplayer FPS"
+    [20]="Classic arena shooter"
+    [21]="Arena shooter sequel"
+    [22]="WotLK 3.3.5a private server"
 )
 
 # =============================================================================
@@ -150,7 +156,7 @@ show_text_menu() {
         read -r choice
 
         case "$choice" in
-            [1-9]|1[0-9]|20)
+            [1-9]|1[0-9]|2[0-2])
                 run_setup "$choice"
                 ;;
             q|Q)

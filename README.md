@@ -20,12 +20,14 @@ A collection of automated setup scripts for deploying dedicated game servers on 
 | Project Zomboid | `projectzomboid/pz-server-setup.sh` | 380870 | 16261 |
 | San Andreas Multiplayer | `samp/samp-server-setup.sh` | N/A | 7777 |
 | Starbound | `starbound/starbound-server-setup.sh` | 211820 | 21025 |
+| Star Wars Galaxies EMU | `swgemu/swgemu-server-setup.sh` | N/A | 44419 |
 | Sven Co-op | `svencoop/svencoop-server-setup.sh` | 276060 | 27015 |
 | Synergy | `synergy/synergy-server-setup.sh` | 17520 | 27015 |
 | Team Fortress Classic | `tfc/tfc-server-setup.sh` | 20 | 27015 |
 | Team Fortress 2 | `teamfortress2/tf2-server-setup.sh` | 232250 | 27015 |
 | Unreal Tournament 99 | `ut99/ut99-server-setup.sh` | N/A | 7777 |
 | Unreal Tournament 2004 | `ut2004/ut2004-server-setup.sh` | N/A | 7777 |
+| World of Warcraft | `azerothcore/wow-server-setup.sh` | N/A | 3724 |
 
 ## Quick Start
 
@@ -126,6 +128,8 @@ gameservers/
 │   └── samp-server-setup.sh      # San Andreas Multiplayer
 ├── starbound/
 │   └── starbound-server-setup.sh # Starbound
+├── swgemu/
+│   └── swgemu-server-setup.sh    # Star Wars Galaxies EMU
 ├── svencoop/
 │   └── svencoop-server-setup.sh  # Sven Co-op
 ├── synergy/
@@ -136,8 +140,10 @@ gameservers/
 │   └── tfc-server-setup.sh       # Team Fortress Classic
 ├── ut99/
 │   └── ut99-server-setup.sh      # Unreal Tournament 99
-└── ut2004/
-    └── ut2004-server-setup.sh    # Unreal Tournament 2004
+├── ut2004/
+│   └── ut2004-server-setup.sh    # Unreal Tournament 2004
+└── azerothcore/
+    └── wow-server-setup.sh       # World of Warcraft
 ```
 
 ## How It Works
@@ -216,12 +222,14 @@ Each game server script follows the same pattern:
 | Project Zomboid | `/opt/pzserver/` |
 | San Andreas Multiplayer | `/opt/sampserver/` |
 | Starbound | `/opt/starboundserver/` |
+| Star Wars Galaxies EMU | `/opt/swgemu/` |
 | Sven Co-op | `/opt/svencoopserver/` |
 | Synergy | `/opt/synergyserver/` |
 | Team Fortress Classic | `/opt/tfcserver/` |
 | Team Fortress 2 | `/opt/tf2server/` |
 | Unreal Tournament 99 | `/opt/ut99server/` |
 | Unreal Tournament 2004 | `/opt/ut2004server/` |
+| World of Warcraft | `/opt/azerothcore/` |
 | Log Files | `/var/log/gameservers/` |
 
 ## Service Management
@@ -266,12 +274,14 @@ Service names:
 - `pzserver` - Project Zomboid
 - `sampserver` - San Andreas Multiplayer
 - `starboundserver` - Starbound
+- `swgemuserver` - Star Wars Galaxies EMU
 - `svencoopserver` - Sven Co-op
 - `synergyserver` - Synergy
 - `tfcserver` - Team Fortress Classic
 - `tf2server` - Team Fortress 2
 - `ut99server` - Unreal Tournament 99
 - `ut2004server` - Unreal Tournament 2004
+- `wowauth` / `wowworld` - World of Warcraft (auth + world)
 
 ## Console Access
 
@@ -525,6 +535,61 @@ sudo systemctl restart tf2server
 - Onslaught: `Onslaught.ONSOnslaughtGame`
 - Assault: `UT2k4Assault.UT2k4AssaultGame`
 
+### Star Wars Galaxies EMU
+
+- **Type:** SWGEmu Core3 server
+- **Install Location:** `/opt/swgemu/`
+- **Binary Directory:** `/opt/swgemu/workspace/Core3/MMOCoreORB/bin/`
+- **Config File:** `bin/conf/config-local.lua`
+- **TRE Files:** `/opt/swgemu/tre/`
+- **Login Port:** 44419
+- **Zone Port:** 44453
+- **Status Port:** 44455
+- **Note:** Requires original SWG .tre files
+
+**Build Requirements:**
+- Debian 12 / Ubuntu 22.04+
+- Clang 19
+- MariaDB
+- 8GB+ RAM, 50GB+ disk
+
+**Resources:**
+- GitHub: https://github.com/swgemu/Core3
+- SWGEmu Wiki: https://www.swgemu.com/wiki/
+
+### World of Warcraft (AzerothCore)
+
+- **Type:** AzerothCore WotLK 3.3.5a server
+- **Install Location:** `/opt/azerothcore/`
+- **Server Directory:** `/opt/azerothcore/server/`
+- **Data Directory:** `/opt/azerothcore/data/`
+- **Auth Config:** `/opt/azerothcore/server/etc/authserver.conf`
+- **World Config:** `/opt/azerothcore/server/etc/worldserver.conf`
+- **Auth Port:** 3724
+- **World Port:** 8085
+- **Note:** Requires WoW 3.3.5a client for data extraction
+
+**Databases:**
+- `acore_auth` - Authentication/accounts
+- `acore_world` - Game world data
+- `acore_characters` - Character data
+
+**Create Account:**
+```bash
+/opt/azerothcore/server/bin/create_account.sh <user> <pass> [gmlevel]
+# gmlevel: 0=player, 1=mod, 2=gm, 3=admin
+```
+
+**Client Setup:**
+Edit `realmlist.wtf` in client Data folder:
+```
+set realmlist <your-server-ip>
+```
+
+**Resources:**
+- Wiki: https://www.azerothcore.org/wiki/
+- GitHub: https://github.com/azerothcore/azerothcore-wotlk
+
 ## Firewall Configuration
 
 If using UFW (Uncomplicated Firewall):
@@ -617,6 +682,16 @@ sudo ufw allow 7778/udp    # Query port
 sudo ufw allow 7777/udp
 sudo ufw allow 7778/udp    # Query port
 sudo ufw allow 8075/tcp    # Web admin
+
+# Star Wars Galaxies EMU
+sudo ufw allow 44419/tcp   # Login
+sudo ufw allow 44453/tcp   # Zone
+sudo ufw allow 44455/tcp   # Status
+sudo ufw allow 44462/udp   # Ping
+
+# World of Warcraft
+sudo ufw allow 3724/tcp    # Auth server
+sudo ufw allow 8085/tcp    # World server
 ```
 
 ## Logging
