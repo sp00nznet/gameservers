@@ -29,38 +29,38 @@ DIALOG_MENU_HEIGHT=10
 # =============================================================================
 declare -A MENU_OPTIONS=(
     [1]="ARK: Survival Ascended"
-    [2]="Half-Life 2: Deathmatch"
-    [3]="Half-Life Deathmatch"
+    [2]="Half-Life Deathmatch"
+    [3]="Half-Life 2: Deathmatch"
     [4]="Killing Floor"
     [5]="Killing Floor 2"
     [6]="Project Zomboid"
     [7]="Synergy"
-    [8]="Team Fortress 2"
-    [9]="Team Fortress Classic"
+    [8]="Team Fortress Classic"
+    [9]="Team Fortress 2"
 )
 
 declare -A MENU_SCRIPTS=(
     [1]="${SCRIPT_DIR}/arkasa/ark-server-setup.sh"
-    [2]="${SCRIPT_DIR}/hl2dm/hl2dm-server-setup.sh"
-    [3]="${SCRIPT_DIR}/hldm/hldm-server-setup.sh"
+    [2]="${SCRIPT_DIR}/hldm/hldm-server-setup.sh"
+    [3]="${SCRIPT_DIR}/hl2dm/hl2dm-server-setup.sh"
     [4]="${SCRIPT_DIR}/killingfloor/kf-server-setup.sh"
     [5]="${SCRIPT_DIR}/killingfloor2/kf2-server-setup.sh"
     [6]="${SCRIPT_DIR}/projectzomboid/pz-server-setup.sh"
     [7]="${SCRIPT_DIR}/synergy/synergy-server-setup.sh"
-    [8]="${SCRIPT_DIR}/teamfortress2/tf2-server-setup.sh"
-    [9]="${SCRIPT_DIR}/tfc/tfc-server-setup.sh"
+    [8]="${SCRIPT_DIR}/tfc/tfc-server-setup.sh"
+    [9]="${SCRIPT_DIR}/teamfortress2/tf2-server-setup.sh"
 )
 
 declare -A MENU_DESCRIPTIONS=(
     [1]="Dinosaur survival sandbox MMO"
-    [2]="Source engine deathmatch"
-    [3]="Classic GoldSrc deathmatch"
+    [2]="Classic GoldSrc deathmatch"
+    [3]="Source engine deathmatch"
     [4]="Cooperative survival horror FPS"
     [5]="Cooperative survival horror sequel"
     [6]="Open-world zombie survival RPG"
     [7]="Half-Life 2 co-op mod"
-    [8]="Team-based multiplayer FPS"
-    [9]="Classic team-based multiplayer"
+    [8]="Classic team-based multiplayer"
+    [9]="Team-based multiplayer FPS"
 )
 
 # =============================================================================
