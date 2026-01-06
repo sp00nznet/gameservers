@@ -10,6 +10,7 @@ A collection of automated setup scripts for deploying dedicated game servers on 
 | Killing Floor 2 | `killingfloor2/kf2-server-setup.sh` | 232130 | 7777 |
 | Team Fortress 2 | `teamfortress2/tf2-server-setup.sh` | 232250 | 27015 |
 | Project Zomboid | `projectzomboid/pz-server-setup.sh` | 380870 | 16261 |
+| ARK: Survival Ascended | `arkasa/ark-server-setup.sh` | 2430930 | 7777 |
 
 ## Quick Start
 
@@ -27,8 +28,8 @@ sudo ./setup.sh
 ### System Requirements
 - Linux (Debian/Ubuntu recommended)
 - Root access (sudo)
-- Minimum 2GB RAM (4GB+ recommended for Project Zomboid)
-- SSD storage recommended for faster load times
+- Minimum 2GB RAM (4GB+ for Project Zomboid, 16GB+ for ARK ASA)
+- SSD storage recommended (ARK ASA requires ~50GB+)
 
 ### Dependencies
 The scripts will check for these dependencies automatically:
@@ -58,6 +59,15 @@ sudo apt-get install curl tar screen dialog
 sudo apt-get install openjdk-17-jre-headless lib32gcc-s1
 ```
 
+**ARK: Survival Ascended:**
+- Minimum 16GB RAM (32GB recommended)
+- 50GB+ free disk space
+- Proton GE (automatically installed by script)
+- wget for downloading Proton
+```bash
+sudo apt-get install wget
+```
+
 ## Project Structure
 
 ```
@@ -72,8 +82,10 @@ gameservers/
 │   └── kf2-server-setup.sh       # Killing Floor 2 setup
 ├── teamfortress2/
 │   └── tf2-server-setup.sh       # Team Fortress 2 setup
-└── projectzomboid/
-    └── pz-server-setup.sh        # Project Zomboid setup
+├── projectzomboid/
+│   └── pz-server-setup.sh        # Project Zomboid setup
+└── arkasa/
+    └── ark-server-setup.sh       # ARK: Survival Ascended setup
 ```
 
 ## How It Works
@@ -142,6 +154,7 @@ Each game server script follows the same pattern:
 | Killing Floor 2 | `/opt/kf2server/` |
 | Team Fortress 2 | `/opt/tf2server/` |
 | Project Zomboid | `/opt/pzserver/` |
+| ARK: Survival Ascended | `/opt/arkserver/` |
 | Log Files | `/var/log/gameservers/` |
 
 ## Service Management
@@ -176,6 +189,7 @@ Service names:
 - `kf2server` - Killing Floor 2
 - `tf2server` - Team Fortress 2
 - `pzserver` - Project Zomboid
+- `arkserver` - ARK: Survival Ascended
 
 ## Console Access
 
@@ -242,6 +256,30 @@ sudo systemctl restart tf2server
 sudo nano /home/pzuser/Zomboid/Server/pzserver.ini
 ```
 
+### ARK: Survival Ascended
+
+- **Config Location:** `/opt/arkserver/ShooterGame/Saved/Config/WindowsServer/`
+- **Main Config:** `GameUserSettings.ini`
+- **Game Rules:** `Game.ini`
+- **Default Map:** TheIsland_WP
+- **Max Players:** 70
+- **Requires:** Proton GE for Windows compatibility
+
+**Available Maps:**
+- `TheIsland_WP` - The Island
+- `ScorchedEarth_WP` - Scorched Earth
+- `Aberration_WP` - Aberration
+- `TheCenter_WP` - The Center
+- `Ragnarok_WP` - Ragnarok
+- `Extinction_WP` - Extinction
+
+**Adding Mods:** Edit the `MODS` variable in the setup script:
+```bash
+sudo nano /home/user/gameservers/arkasa/ark-server-setup.sh
+# Find and edit: MODS=""
+# Example: MODS="928793,900062"
+```
+
 ## Firewall Configuration
 
 If using UFW (Uncomplicated Firewall):
@@ -267,6 +305,11 @@ sudo ufw allow 27015/udp
 sudo ufw allow 16261/udp
 sudo ufw allow 16262/udp
 sudo ufw allow 27015/tcp   # RCON
+
+# ARK: Survival Ascended
+sudo ufw allow 7777/udp    # Game port
+sudo ufw allow 27015/udp   # Query port
+sudo ufw allow 27020/tcp   # RCON
 ```
 
 ## Logging

@@ -32,6 +32,7 @@ declare -A MENU_OPTIONS=(
     [2]="Killing Floor 2"
     [3]="Team Fortress 2"
     [4]="Project Zomboid"
+    [5]="ARK: Survival Ascended"
 )
 
 declare -A MENU_SCRIPTS=(
@@ -39,6 +40,7 @@ declare -A MENU_SCRIPTS=(
     [2]="${SCRIPT_DIR}/killingfloor2/kf2-server-setup.sh"
     [3]="${SCRIPT_DIR}/teamfortress2/tf2-server-setup.sh"
     [4]="${SCRIPT_DIR}/projectzomboid/pz-server-setup.sh"
+    [5]="${SCRIPT_DIR}/arkasa/ark-server-setup.sh"
 )
 
 declare -A MENU_DESCRIPTIONS=(
@@ -46,6 +48,7 @@ declare -A MENU_DESCRIPTIONS=(
     [2]="Sequel with updated graphics and gameplay"
     [3]="Team-based multiplayer FPS by Valve"
     [4]="Open-world zombie survival RPG"
+    [5]="Dinosaur survival sandbox MMO"
 )
 
 # =============================================================================
@@ -102,7 +105,7 @@ show_text_menu() {
         read -r choice
 
         case "$choice" in
-            [1-4])
+            [1-5])
                 run_setup "$choice"
                 ;;
             q|Q)
