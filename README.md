@@ -6,15 +6,25 @@ A collection of automated setup scripts for deploying dedicated game servers on 
 
 | Game | Script | Steam App ID | Default Port |
 |------|--------|--------------|--------------|
+| Abiotic Factor | `abioticfactor/af-server-setup.sh` | 2857200 | 7777 |
 | ARK: Survival Ascended | `arkasa/ark-server-setup.sh` | 2430930 | 7777 |
-| Half-Life 2: Deathmatch | `hl2dm/hl2dm-server-setup.sh` | 232370 | 27015 |
+| Black Mesa | `blackmesa/bm-server-setup.sh` | 346680 | 27015 |
+| Counter-Strike | `counterstrike/cs-server-setup.sh` | 90 | 27015 |
+| Counter-Strike 2 | `counterstrike2/cs2-server-setup.sh` | 730 | 27015 |
 | Half-Life Deathmatch | `hldm/hldm-server-setup.sh` | 90 | 27015 |
+| Half-Life 2: Deathmatch | `hl2dm/hl2dm-server-setup.sh` | 232370 | 27015 |
+| HumanitZ | `humanitz/humanitz-server-setup.sh` | 2372920 | 7777 |
 | Killing Floor | `killingfloor/kf-server-setup.sh` | 215360 | 7707 |
 | Killing Floor 2 | `killingfloor2/kf2-server-setup.sh` | 232130 | 7777 |
 | Project Zomboid | `projectzomboid/pz-server-setup.sh` | 380870 | 16261 |
+| San Andreas Multiplayer | `samp/samp-server-setup.sh` | N/A | 7777 |
+| Starbound | `starbound/starbound-server-setup.sh` | 211820 | 21025 |
+| Sven Co-op | `svencoop/svencoop-server-setup.sh` | 276060 | 27015 |
 | Synergy | `synergy/synergy-server-setup.sh` | 17520 | 27015 |
-| Team Fortress 2 | `teamfortress2/tf2-server-setup.sh` | 232250 | 27015 |
 | Team Fortress Classic | `tfc/tfc-server-setup.sh` | 20 | 27015 |
+| Team Fortress 2 | `teamfortress2/tf2-server-setup.sh` | 232250 | 27015 |
+| Unreal Tournament 99 | `ut99/ut99-server-setup.sh` | N/A | 7777 |
+| Unreal Tournament 2004 | `ut2004/ut2004-server-setup.sh` | N/A | 7777 |
 
 ## Quick Start
 
@@ -87,24 +97,44 @@ gameservers/
 ├── README.md                     # This file
 ├── lib/
 │   └── common.sh                 # Shared functions and utilities
+├── abioticfactor/
+│   └── af-server-setup.sh        # Abiotic Factor
 ├── arkasa/
 │   └── ark-server-setup.sh       # ARK: Survival Ascended
+├── blackmesa/
+│   └── bm-server-setup.sh        # Black Mesa
+├── counterstrike/
+│   └── cs-server-setup.sh        # Counter-Strike
+├── counterstrike2/
+│   └── cs2-server-setup.sh       # Counter-Strike 2
 ├── hl2dm/
 │   └── hl2dm-server-setup.sh     # Half-Life 2: Deathmatch
 ├── hldm/
 │   └── hldm-server-setup.sh      # Half-Life Deathmatch
+├── humanitz/
+│   └── humanitz-server-setup.sh  # HumanitZ
 ├── killingfloor/
 │   └── kf-server-setup.sh        # Killing Floor
 ├── killingfloor2/
 │   └── kf2-server-setup.sh       # Killing Floor 2
 ├── projectzomboid/
 │   └── pz-server-setup.sh        # Project Zomboid
+├── samp/
+│   └── samp-server-setup.sh      # San Andreas Multiplayer
+├── starbound/
+│   └── starbound-server-setup.sh # Starbound
+├── svencoop/
+│   └── svencoop-server-setup.sh  # Sven Co-op
 ├── synergy/
 │   └── synergy-server-setup.sh   # Synergy
 ├── teamfortress2/
 │   └── tf2-server-setup.sh       # Team Fortress 2
-└── tfc/
-    └── tfc-server-setup.sh       # Team Fortress Classic
+├── tfc/
+│   └── tfc-server-setup.sh       # Team Fortress Classic
+├── ut99/
+│   └── ut99-server-setup.sh      # Unreal Tournament 99
+└── ut2004/
+    └── ut2004-server-setup.sh    # Unreal Tournament 2004
 ```
 
 ## How It Works
@@ -169,15 +199,25 @@ Each game server script follows the same pattern:
 | Component | Location |
 |-----------|----------|
 | SteamCMD | `/opt/steamcmd/` |
+| Abiotic Factor | `/opt/afserver/` |
 | ARK: Survival Ascended | `/opt/arkserver/` |
-| Half-Life 2: Deathmatch | `/opt/hl2dmserver/` |
+| Black Mesa | `/opt/bmserver/` |
+| Counter-Strike | `/opt/csserver/` |
+| Counter-Strike 2 | `/opt/cs2server/` |
 | Half-Life Deathmatch | `/opt/hldmserver/` |
+| Half-Life 2: Deathmatch | `/opt/hl2dmserver/` |
+| HumanitZ | `/opt/humanitzserver/` |
 | Killing Floor | `/opt/kf1server/` |
 | Killing Floor 2 | `/opt/kf2server/` |
 | Project Zomboid | `/opt/pzserver/` |
+| San Andreas Multiplayer | `/opt/sampserver/` |
+| Starbound | `/opt/starboundserver/` |
+| Sven Co-op | `/opt/svencoopserver/` |
 | Synergy | `/opt/synergyserver/` |
-| Team Fortress 2 | `/opt/tf2server/` |
 | Team Fortress Classic | `/opt/tfcserver/` |
+| Team Fortress 2 | `/opt/tf2server/` |
+| Unreal Tournament 99 | `/opt/ut99server/` |
+| Unreal Tournament 2004 | `/opt/ut2004server/` |
 | Log Files | `/var/log/gameservers/` |
 
 ## Service Management
@@ -208,15 +248,25 @@ sudo journalctl -u <service-name> -f
 ```
 
 Service names:
+- `afserver` - Abiotic Factor
 - `arkserver` - ARK: Survival Ascended
-- `hl2dmserver` - Half-Life 2: Deathmatch
+- `bmserver` - Black Mesa
+- `csserver` - Counter-Strike
+- `cs2server` - Counter-Strike 2
 - `hldmserver` - Half-Life Deathmatch
+- `hl2dmserver` - Half-Life 2: Deathmatch
+- `humanitzserver` - HumanitZ
 - `kf1server` - Killing Floor
 - `kf2server` - Killing Floor 2
 - `pzserver` - Project Zomboid
+- `sampserver` - San Andreas Multiplayer
+- `starboundserver` - Starbound
+- `svencoopserver` - Sven Co-op
 - `synergyserver` - Synergy
-- `tf2server` - Team Fortress 2
 - `tfcserver` - Team Fortress Classic
+- `tf2server` - Team Fortress 2
+- `ut99server` - Unreal Tournament 99
+- `ut2004server` - Unreal Tournament 2004
 
 ## Console Access
 
@@ -261,17 +311,51 @@ sudo nano /home/user/gameservers/arkasa/ark-server-setup.sh
 # Example: MODS="928793,900062"
 ```
 
-### Half-Life 2: Deathmatch
+### Black Mesa
 
-- **Config Location:** `/opt/hl2dmserver/hl2mp/cfg/server.cfg`
-- **GSLT Config:** `/opt/hl2dmserver/hl2dmserver.conf`
-- **Default Map:** dm_lockdown
+- **Config Location:** `/opt/bmserver/bms/cfg/server.cfg`
+- **GSLT Config:** `/opt/bmserver/bmserver.conf`
+- **Default Map:** dm_bounce
 - **Max Players:** 16
+
+**Available Maps:**
+- `dm_bounce`, `dm_chopper`, `dm_crossfire`, `dm_gasworks`
+- `dm_lambdabunker`, `dm_power`, `dm_rail`, `dm_stack`
+- `dm_stalkyard`, `dm_subtransit`, `dm_undertow`
+
+### Counter-Strike
+
+- **Config Location:** `/opt/csserver/cstrike/server.cfg`
+- **Default Map:** de_dust2
+- **Max Players:** 20
+- **Note:** Classic tactical shooter; uses GoldSrc engine
+
+### Counter-Strike 2
+
+- **Config Location:** `/opt/cs2server/game/csgo/cfg/server.cfg`
+- **GSLT Config:** `/opt/cs2server/cs2server.conf`
+- **Default Map:** de_dust2
+- **Max Players:** 20
+- **Note:** GSLT is required for server to function properly
+
+**Game Modes:**
+- `game_type 0, game_mode 0` - Casual
+- `game_type 0, game_mode 1` - Competitive
+- `game_type 1, game_mode 0` - Arms Race
+- `game_type 1, game_mode 1` - Demolition
+- `game_type 1, game_mode 2` - Deathmatch
 
 ### Half-Life Deathmatch
 
 - **Config Location:** `/opt/hldmserver/valve/server.cfg`
 - **Default Map:** crossfire
+- **Max Players:** 16
+
+### Half-Life 2: Deathmatch
+
+- **Config Location:** `/opt/hl2dmserver/hl2mp/cfg/server.cfg`
+- **GSLT Config:** `/opt/hl2dmserver/hl2dmserver.conf`
+- **Default Map:** dm_lockdown
 - **Max Players:** 16
 
 ### Killing Floor
@@ -333,6 +417,79 @@ sudo systemctl restart tf2server
 - **Default Map:** 2fort
 - **Max Players:** 24
 
+### Abiotic Factor
+
+- **Config Location:** Edit startup parameters in systemd service
+- **Default Port:** 7777
+- **Query Port:** 27015
+- **Max Players:** 6
+- **Note:** Co-op sci-fi survival crafting game
+
+### HumanitZ
+
+- **Config Location:** Edit startup parameters in systemd service
+- **Default Port:** 7777
+- **Query Port:** 27015
+- **Max Players:** 16
+- **Note:** Open-world zombie survival game
+
+### San Andreas Multiplayer
+
+- **Config Location:** `/opt/sampserver/server.cfg`
+- **Default Port:** 7777
+- **Max Players:** 50
+- **Gamemodes:** Located in `/opt/sampserver/gamemodes/`
+- **Note:** GTA San Andreas multiplayer mod
+
+### Starbound
+
+- **Config Location:** `/opt/starboundserver/storage/starbound_server.config`
+- **Default Port:** 21025
+- **Max Players:** 8
+- **Note:** Sandbox exploration adventure
+
+### Sven Co-op
+
+- **Config Location:** `/opt/svencoopserver/svencoop/server.cfg`
+- **Default Map:** svencoop1
+- **Default Port:** 27015
+- **Max Players:** 12
+- **Note:** Half-Life co-op mod
+
+### Unreal Tournament 99
+
+- **Config Location:** `/opt/ut99server/System/UnrealTournament.ini`
+- **Default Map:** DM-Deck16][
+- **Default Port:** 7777
+- **Query Port:** 7778
+- **Max Players:** 16
+- **Note:** Requires original game files
+
+**Game Modes:**
+- Deathmatch: `Botpack.DeathMatchPlus`
+- Team DM: `Botpack.TeamGamePlus`
+- CTF: `Botpack.CTFGame`
+- Assault: `Botpack.Assault`
+- Domination: `Botpack.Domination`
+
+### Unreal Tournament 2004
+
+- **Config Location:** `/opt/ut2004server/System/UT2004.ini`
+- **Default Map:** DM-Rankin
+- **Default Port:** 7777
+- **Query Port:** 7778
+- **Web Admin Port:** 8075
+- **Max Players:** 16
+- **Note:** Requires original game files
+
+**Game Modes:**
+- Deathmatch: `XGame.xDeathMatch`
+- Team DM: `XGame.xTeamGame`
+- CTF: `XGame.xCTFGame`
+- Bombing Run: `XGame.xBombingRun`
+- Onslaught: `Onslaught.ONSOnslaughtGame`
+- Assault: `UT2k4Assault.UT2k4AssaultGame`
+
 ## Firewall Configuration
 
 If using UFW (Uncomplicated Firewall):
@@ -343,11 +500,24 @@ sudo ufw allow 7777/udp    # Game port
 sudo ufw allow 27015/udp   # Query port
 sudo ufw allow 27020/tcp   # RCON
 
-# Half-Life 2: Deathmatch
+# Black Mesa
 sudo ufw allow 27015/tcp
 sudo ufw allow 27015/udp
 
+# Counter-Strike
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Counter-Strike 2
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+sudo ufw allow 27020/udp   # SourceTV
+
 # Half-Life Deathmatch
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Half-Life 2: Deathmatch
 sudo ufw allow 27015/tcp
 sudo ufw allow 27015/udp
 
@@ -379,6 +549,33 @@ sudo ufw allow 27015/udp
 # Team Fortress Classic
 sudo ufw allow 27015/tcp
 sudo ufw allow 27015/udp
+
+# Abiotic Factor
+sudo ufw allow 7777/udp
+sudo ufw allow 27015/udp   # Query port
+
+# HumanitZ
+sudo ufw allow 7777/udp
+sudo ufw allow 27015/udp   # Query port
+
+# San Andreas Multiplayer
+sudo ufw allow 7777/udp
+
+# Starbound
+sudo ufw allow 21025/tcp
+
+# Sven Co-op
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+
+# Unreal Tournament 99
+sudo ufw allow 7777/udp
+sudo ufw allow 7778/udp    # Query port
+
+# Unreal Tournament 2004
+sudo ufw allow 7777/udp
+sudo ufw allow 7778/udp    # Query port
+sudo ufw allow 8075/tcp    # Web admin
 ```
 
 ## Logging
