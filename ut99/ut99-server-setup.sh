@@ -140,6 +140,9 @@ run_container() {
     else
         log_warn "Container may need original game files. Check logs with: docker logs ${CONTAINER_NAME}"
     fi
+
+    # Create systemd service for auto-start
+    create_docker_service "$CONTAINER_NAME" "${GAME_NAME} Dedicated Server"
 }
 
 show_summary() {

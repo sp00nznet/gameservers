@@ -147,17 +147,21 @@ show_text_menu() {
         done
 
         separator "─" 60
+        echo -e "  ${CYAN}m)${RESET} Monitor deployed servers"
         echo -e "  ${YELLOW}q)${RESET} Quit"
         echo ""
         separator "─" 60
 
         echo ""
-        echo -en "${CYAN}Enter your choice [1-${#MENU_OPTIONS[@]}, q]: ${RESET}"
+        echo -en "${CYAN}Enter your choice [1-${#MENU_OPTIONS[@]}, m, q]: ${RESET}"
         read -r choice
 
         case "$choice" in
             [1-9]|1[0-9]|2[0-2])
                 run_setup "$choice"
+                ;;
+            m|M)
+                show_monitor_menu
                 ;;
             q|Q)
                 echo ""
@@ -181,6 +185,8 @@ show_dialog_menu() {
     for key in $(echo "${!MENU_OPTIONS[@]}" | tr ' ' '\n' | sort -n); do
         options+=("$key" "${MENU_OPTIONS[$key]} - ${MENU_DESCRIPTIONS[$key]}")
     done
+    # Add monitoring option
+    options+=("M" "Monitor Deployed Servers - View status, logs, control servers")
 
     while true; do
         choice=$(dialog --clear \
@@ -202,7 +208,9 @@ show_dialog_menu() {
             exit 0
         fi
 
-        if [[ -n "$choice" ]]; then
+        if [[ "$choice" == "M" ]]; then
+            show_monitor_menu
+        elif [[ -n "$choice" ]]; then
             run_setup "$choice"
         fi
     done
@@ -261,11 +269,15 @@ Options:
     -v, --version   Show version information
     -t, --text      Force text-based menu (no dialog)
     -l, --list      List available game servers
+    -m, --monitor   Open server monitoring menu
+    -s, --status    Show quick status of all deployed servers
 
 Examples:
     ${SCRIPT_NAME}           # Run interactive menu
     ${SCRIPT_NAME} --text    # Force text menu
     ${SCRIPT_NAME} --list    # Show available servers
+    ${SCRIPT_NAME} --monitor # Monitor deployed servers
+    ${SCRIPT_NAME} --status  # Quick server status check
 
 EOF
 }
@@ -283,11 +295,285 @@ list_servers() {
 }
 
 # =============================================================================
+# MONITORING FUNCTIONS
+# =============================================================================
+
+# Show monitoring menu
+show_monitor_menu() {
+    local choice
+
+    while true; do
+        show_banner
+        echo -e "${BOLD}Server Monitoring${RESET}"
+        echo ""
+
+        show_servers_status
+
+        separator "─" 60
+        echo -e "${BOLD}Actions:${RESET}"
+        echo ""
+        echo -e "  ${GREEN}1)${RESET} Refresh status"
+        echo -e "  ${GREEN}2)${RESET} View server details"
+        echo -e "  ${GREEN}3)${RESET} Start a server"
+        echo -e "  ${GREEN}4)${RESET} Stop a server"
+        echo -e "  ${GREEN}5)${RESET} Restart a server"
+        echo -e "  ${GREEN}6)${RESET} View server logs"
+        echo -e "  ${GREEN}7)${RESET} Live resource monitor"
+        echo ""
+        separator "─" 60
+        echo -e "  ${YELLOW}b)${RESET} Back to main menu"
+        echo -e "  ${YELLOW}q)${RESET} Quit"
+        echo ""
+        separator "─" 60
+
+        echo ""
+        echo -en "${CYAN}Enter your choice: ${RESET}"
+        read -r choice
+
+        case "$choice" in
+            1)
+                # Refresh - just continue loop
+                ;;
+            2)
+                select_and_show_details
+                ;;
+            3)
+                select_and_control_server "start"
+                ;;
+            4)
+                select_and_control_server "stop"
+                ;;
+            5)
+                select_and_control_server "restart"
+                ;;
+            6)
+                select_and_view_logs
+                ;;
+            7)
+                show_live_stats
+                ;;
+            b|B)
+                return 0
+                ;;
+            q|Q)
+                echo ""
+                log_info "Exiting. Goodbye!"
+                exit 0
+                ;;
+            *)
+                log_warn "Invalid option. Please try again."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+# Select a server and show details
+select_and_show_details() {
+    local containers
+    containers=$(list_game_containers | sort -u)
+
+    if [[ -z "$containers" ]]; then
+        log_warn "No game server containers found."
+        sleep 2
+        return
+    fi
+
+    echo ""
+    echo -e "${BOLD}Select a server to view details:${RESET}"
+    echo ""
+
+    local i=1
+    declare -A container_map
+    while IFS= read -r container; do
+        [[ -z "$container" ]] && continue
+        echo -e "  ${GREEN}${i})${RESET} $container"
+        container_map[$i]="$container"
+        ((i++))
+    done <<< "$containers"
+
+    echo ""
+    echo -en "${CYAN}Enter server number (or 'b' to go back): ${RESET}"
+    read -r choice
+
+    if [[ "$choice" == "b" || "$choice" == "B" ]]; then
+        return
+    fi
+
+    if [[ -n "${container_map[$choice]}" ]]; then
+        show_server_details "${container_map[$choice]}"
+        echo -en "Press Enter to continue..."
+        read -r
+    else
+        log_warn "Invalid selection."
+        sleep 1
+    fi
+}
+
+# Select a server and control it (start/stop/restart)
+select_and_control_server() {
+    local action="$1"
+    local containers
+    containers=$(list_game_containers | sort -u)
+
+    if [[ -z "$containers" ]]; then
+        log_warn "No game server containers found."
+        sleep 2
+        return
+    fi
+
+    echo ""
+    echo -e "${BOLD}Select a server to ${action}:${RESET}"
+    echo ""
+
+    local i=1
+    declare -A container_map
+    while IFS= read -r container; do
+        [[ -z "$container" ]] && continue
+        local status
+        status=$(get_container_status "$container")
+        local status_icon
+        case "$status" in
+            running) status_icon="${GREEN}●${RESET}" ;;
+            stopped) status_icon="${RED}●${RESET}" ;;
+            *) status_icon="${YELLOW}●${RESET}" ;;
+        esac
+        echo -e "  ${GREEN}${i})${RESET} $container [$status_icon $status]"
+        container_map[$i]="$container"
+        ((i++))
+    done <<< "$containers"
+
+    echo ""
+    echo -en "${CYAN}Enter server number (or 'b' to go back): ${RESET}"
+    read -r choice
+
+    if [[ "$choice" == "b" || "$choice" == "B" ]]; then
+        return
+    fi
+
+    if [[ -n "${container_map[$choice]}" ]]; then
+        local container="${container_map[$choice]}"
+        echo ""
+        case "$action" in
+            start)
+                log_info "Starting ${container}..."
+                if docker start "$container" &>/dev/null; then
+                    log_success "Server started: ${container}"
+                else
+                    log_error "Failed to start: ${container}"
+                fi
+                ;;
+            stop)
+                log_info "Stopping ${container}..."
+                if docker stop "$container" &>/dev/null; then
+                    log_success "Server stopped: ${container}"
+                else
+                    log_error "Failed to stop: ${container}"
+                fi
+                ;;
+            restart)
+                log_info "Restarting ${container}..."
+                if docker restart "$container" &>/dev/null; then
+                    log_success "Server restarted: ${container}"
+                else
+                    log_error "Failed to restart: ${container}"
+                fi
+                ;;
+        esac
+        sleep 2
+    else
+        log_warn "Invalid selection."
+        sleep 1
+    fi
+}
+
+# Select a server and view its logs
+select_and_view_logs() {
+    local containers
+    containers=$(list_game_containers | sort -u)
+
+    if [[ -z "$containers" ]]; then
+        log_warn "No game server containers found."
+        sleep 2
+        return
+    fi
+
+    echo ""
+    echo -e "${BOLD}Select a server to view logs:${RESET}"
+    echo ""
+
+    local i=1
+    declare -A container_map
+    while IFS= read -r container; do
+        [[ -z "$container" ]] && continue
+        echo -e "  ${GREEN}${i})${RESET} $container"
+        container_map[$i]="$container"
+        ((i++))
+    done <<< "$containers"
+
+    echo ""
+    echo -en "${CYAN}Enter server number (or 'b' to go back): ${RESET}"
+    read -r choice
+
+    if [[ "$choice" == "b" || "$choice" == "B" ]]; then
+        return
+    fi
+
+    if [[ -n "${container_map[$choice]}" ]]; then
+        local container="${container_map[$choice]}"
+        echo ""
+        separator "=" 60
+        echo -e "${BOLD}Logs for: ${container}${RESET}"
+        echo -e "${DIM}(Press Ctrl+C to stop following logs)${RESET}"
+        separator "-" 60
+        echo ""
+
+        # Show last 50 lines then follow
+        docker logs --tail 50 -f "$container" 2>&1 || true
+
+        echo ""
+        echo -en "Press Enter to continue..."
+        read -r
+    else
+        log_warn "Invalid selection."
+        sleep 1
+    fi
+}
+
+# Show live resource stats for all running servers
+show_live_stats() {
+    local containers
+    containers=$(docker ps --format '{{.Names}}' | grep -E "server$|server[0-9]*$" | sort -u)
+
+    if [[ -z "$containers" ]]; then
+        log_warn "No running game server containers found."
+        sleep 2
+        return
+    fi
+
+    echo ""
+    separator "=" 60
+    echo -e "${BOLD}Live Resource Monitor${RESET}"
+    echo -e "${DIM}(Press Ctrl+C to stop)${RESET}"
+    separator "-" 60
+    echo ""
+
+    # Run docker stats for game server containers
+    docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.PIDs}}" $containers || true
+
+    echo ""
+    echo -en "Press Enter to continue..."
+    read -r
+}
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
 main() {
     local force_text=false
+    local show_monitor=false
+    local show_status_only=false
 
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
@@ -307,6 +593,14 @@ main() {
             -l|--list)
                 list_servers
                 exit 0
+                ;;
+            -m|--monitor)
+                show_monitor=true
+                shift
+                ;;
+            -s|--status)
+                show_status_only=true
+                shift
                 ;;
             *)
                 log_error "Unknown option: $1"
@@ -366,6 +660,18 @@ main() {
     fi
 
     log_success "Docker is available"
+
+    # Handle --status option (quick status check and exit)
+    if [[ "$show_status_only" == true ]]; then
+        show_servers_status
+        exit 0
+    fi
+
+    # Handle --monitor option (go directly to monitoring menu)
+    if [[ "$show_monitor" == true ]]; then
+        show_monitor_menu
+        exit 0
+    fi
 
     # Select menu type
     if [[ "$force_text" == true ]] || ! command_exists dialog; then

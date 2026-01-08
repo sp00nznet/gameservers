@@ -470,5 +470,229 @@ WORKDIR ${install_dir}
 EOF
 }
 
+# Create a systemd service for a Docker container
+# This ensures the container starts on boot and can be managed via systemctl
+create_docker_service() {
+    local container_name="$1"
+    local description="$2"
+
+    local service_content="[Unit]
+Description=${description}
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/docker start ${container_name}
+ExecStop=/usr/bin/docker stop ${container_name}
+ExecReload=/usr/bin/docker restart ${container_name}
+
+[Install]
+WantedBy=multi-user.target"
+
+    local service_path="/etc/systemd/system/${container_name}.service"
+
+    log_info "Creating systemd service for container: ${container_name}"
+
+    echo "$service_content" | sudo tee "$service_path" > /dev/null
+
+    if [[ ! -f "$service_path" ]]; then
+        log_error "Failed to create service file: ${service_path}"
+        return 1
+    fi
+
+    # Reload systemd and enable the service
+    sudo systemctl daemon-reload
+    sudo systemctl enable "${container_name}.service" 2>/dev/null
+
+    log_success "Systemd service created: ${container_name}.service"
+    return 0
+}
+
+# =============================================================================
+# MONITORING FUNCTIONS
+# =============================================================================
+
+# List all game server containers (both running and stopped)
+list_game_containers() {
+    docker ps -a --filter "label=gameserver=true" --format "{{.Names}}" 2>/dev/null
+    # Also list containers matching our naming pattern
+    docker ps -a --format "{{.Names}}" 2>/dev/null | grep -E "server$|server[0-9]*$" | sort -u
+}
+
+# Get container status info
+get_container_status() {
+    local container_name="$1"
+
+    if ! docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
+        echo "not_found"
+        return 1
+    fi
+
+    if docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
+        echo "running"
+    else
+        echo "stopped"
+    fi
+}
+
+# Get detailed container info
+get_container_info() {
+    local container_name="$1"
+
+    if ! docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
+        return 1
+    fi
+
+    local status
+    local uptime
+    local image
+    local ports
+
+    status=$(docker inspect --format '{{.State.Status}}' "$container_name" 2>/dev/null)
+    image=$(docker inspect --format '{{.Config.Image}}' "$container_name" 2>/dev/null)
+    ports=$(docker port "$container_name" 2>/dev/null | tr '\n' ' ')
+
+    if [[ "$status" == "running" ]]; then
+        uptime=$(docker inspect --format '{{.State.StartedAt}}' "$container_name" 2>/dev/null)
+        uptime=$(date -d "$uptime" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "$uptime")
+    else
+        uptime="N/A"
+    fi
+
+    echo "status:$status"
+    echo "image:$image"
+    echo "started:$uptime"
+    echo "ports:$ports"
+}
+
+# Get container resource usage
+get_container_stats() {
+    local container_name="$1"
+
+    if ! container_is_running "$container_name"; then
+        return 1
+    fi
+
+    docker stats --no-stream --format "CPU:{{.CPUPerc}}|MEM:{{.MemUsage}}|NET:{{.NetIO}}" "$container_name" 2>/dev/null
+}
+
+# Show all game servers status in a formatted table
+show_servers_status() {
+    local containers
+    containers=$(list_game_containers | sort -u)
+
+    if [[ -z "$containers" ]]; then
+        echo ""
+        log_warn "No game server containers found."
+        echo ""
+        return 0
+    fi
+
+    echo ""
+    separator "=" 80
+    printf "${BOLD}%-25s %-12s %-20s %-15s${RESET}\n" "CONTAINER" "STATUS" "IMAGE" "PORTS"
+    separator "-" 80
+
+    while IFS= read -r container; do
+        [[ -z "$container" ]] && continue
+
+        local status image ports status_color
+
+        status=$(docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
+        image=$(docker inspect --format '{{.Config.Image}}' "$container" 2>/dev/null | cut -d'/' -f2 || echo "unknown")
+        ports=$(docker port "$container" 2>/dev/null | head -1 | cut -d':' -f2 | cut -d'-' -f1 || echo "-")
+
+        case "$status" in
+            running)
+                status_color="${GREEN}"
+                ;;
+            exited|stopped)
+                status_color="${RED}"
+                ;;
+            *)
+                status_color="${YELLOW}"
+                ;;
+        esac
+
+        printf "%-25s ${status_color}%-12s${RESET} %-20s %-15s\n" "$container" "$status" "$image" "$ports"
+    done <<< "$containers"
+
+    separator "=" 80
+    echo ""
+}
+
+# Show detailed info for a specific server
+show_server_details() {
+    local container_name="$1"
+
+    if ! docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
+        log_error "Container not found: ${container_name}"
+        return 1
+    fi
+
+    echo ""
+    separator "=" 60
+    echo -e "${BOLD}Server Details: ${container_name}${RESET}"
+    separator "-" 60
+
+    local status image created started ports
+
+    status=$(docker inspect --format '{{.State.Status}}' "$container_name" 2>/dev/null)
+    image=$(docker inspect --format '{{.Config.Image}}' "$container_name" 2>/dev/null)
+    created=$(docker inspect --format '{{.Created}}' "$container_name" 2>/dev/null | cut -d'T' -f1)
+    started=$(docker inspect --format '{{.State.StartedAt}}' "$container_name" 2>/dev/null | cut -d'T' -f1,2 | tr 'T' ' ' | cut -d'.' -f1)
+
+    case "$status" in
+        running) echo -e "  ${CYAN}Status:${RESET}       ${GREEN}●${RESET} Running" ;;
+        exited)  echo -e "  ${CYAN}Status:${RESET}       ${RED}●${RESET} Stopped" ;;
+        *)       echo -e "  ${CYAN}Status:${RESET}       ${YELLOW}●${RESET} $status" ;;
+    esac
+
+    echo -e "  ${CYAN}Image:${RESET}        $image"
+    echo -e "  ${CYAN}Created:${RESET}      $created"
+    echo -e "  ${CYAN}Started:${RESET}      $started"
+
+    separator "-" 60
+    echo -e "${BOLD}Port Mappings:${RESET}"
+    docker port "$container_name" 2>/dev/null | while read -r line; do
+        echo -e "  $line"
+    done
+
+    if [[ "$status" == "running" ]]; then
+        separator "-" 60
+        echo -e "${BOLD}Resource Usage:${RESET}"
+        local stats
+        stats=$(docker stats --no-stream --format "{{.CPUPerc}}|{{.MemUsage}}|{{.NetIO}}" "$container_name" 2>/dev/null)
+        if [[ -n "$stats" ]]; then
+            local cpu mem net
+            cpu=$(echo "$stats" | cut -d'|' -f1)
+            mem=$(echo "$stats" | cut -d'|' -f2)
+            net=$(echo "$stats" | cut -d'|' -f3)
+            echo -e "  ${CYAN}CPU:${RESET}          $cpu"
+            echo -e "  ${CYAN}Memory:${RESET}       $mem"
+            echo -e "  ${CYAN}Network I/O:${RESET}  $net"
+        fi
+    fi
+
+    separator "-" 60
+    echo -e "${BOLD}Systemd Service:${RESET}"
+    if systemctl list-unit-files "${container_name}.service" &>/dev/null; then
+        local svc_status
+        svc_status=$(systemctl is-active "${container_name}.service" 2>/dev/null || echo "inactive")
+        local svc_enabled
+        svc_enabled=$(systemctl is-enabled "${container_name}.service" 2>/dev/null || echo "disabled")
+        echo -e "  ${CYAN}Service:${RESET}      ${container_name}.service"
+        echo -e "  ${CYAN}Active:${RESET}       $svc_status"
+        echo -e "  ${CYAN}Enabled:${RESET}      $svc_enabled"
+    else
+        echo -e "  ${DIM}No systemd service configured${RESET}"
+    fi
+
+    separator "=" 60
+    echo ""
+}
+
 # Initialize logging on source
 init_logging

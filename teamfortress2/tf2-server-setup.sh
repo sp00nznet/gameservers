@@ -258,6 +258,9 @@ run_container() {
         log_error "Container failed to start. Check logs with: docker logs ${CONTAINER_NAME}"
         exit 1
     fi
+
+    # Create systemd service for auto-start
+    create_docker_service "$CONTAINER_NAME" "${GAME_NAME} Dedicated Server"
 }
 
 # Display completion summary
@@ -289,10 +292,10 @@ show_summary() {
     separator "-" 60
     echo ""
     echo -e "${BOLD}Useful Commands:${RESET}"
-    echo -e "  ${GREEN}Start server:${RESET}    docker start ${CONTAINER_NAME}"
-    echo -e "  ${GREEN}Stop server:${RESET}     docker stop ${CONTAINER_NAME}"
-    echo -e "  ${GREEN}Restart server:${RESET}  docker restart ${CONTAINER_NAME}"
-    echo -e "  ${GREEN}Server status:${RESET}   docker ps -f name=${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Start server:${RESET}    sudo systemctl start ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Stop server:${RESET}     sudo systemctl stop ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Restart server:${RESET}  sudo systemctl restart ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Server status:${RESET}   sudo systemctl status ${CONTAINER_NAME}"
     echo -e "  ${GREEN}View logs:${RESET}       docker logs -f ${CONTAINER_NAME}"
     echo -e "  ${GREEN}Console access:${RESET}  docker attach ${CONTAINER_NAME}"
     echo ""

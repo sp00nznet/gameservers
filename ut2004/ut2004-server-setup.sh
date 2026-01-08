@@ -149,6 +149,9 @@ run_container() {
 
     # Create the container but don't start it (no game files yet)
     log_info "Container prepared but not started (game files needed)"
+
+    # Create systemd service for auto-start (once container is started)
+    create_docker_service "$CONTAINER_NAME" "${GAME_NAME} Dedicated Server"
 }
 
 show_summary() {
