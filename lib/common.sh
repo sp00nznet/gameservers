@@ -514,6 +514,137 @@ WantedBy=multi-user.target"
 # MONITORING FUNCTIONS
 # =============================================================================
 
+# =============================================================================
+# WINDOWS SERVER MONITORING (VMs & Proton)
+# =============================================================================
+
+# Check if libvirt/virsh is available
+has_libvirt() {
+    command_exists virsh && virsh list &>/dev/null 2>&1
+}
+
+# Check if screen is available
+has_screen() {
+    command_exists screen
+}
+
+# List all Windows VMs (libvirt-based game servers)
+list_windows_vms() {
+    if ! has_libvirt; then
+        return
+    fi
+    # List VMs that match our naming pattern
+    virsh list --all --name 2>/dev/null | grep -E "server|coh|ark" | grep -v "^$"
+}
+
+# Get VM status
+get_vm_status() {
+    local vm_name="$1"
+
+    if ! has_libvirt; then
+        echo "not_available"
+        return 1
+    fi
+
+    local state
+    state=$(virsh domstate "$vm_name" 2>/dev/null)
+
+    case "$state" in
+        running)
+            echo "running"
+            ;;
+        "shut off"|"shutoff")
+            echo "stopped"
+            ;;
+        paused)
+            echo "paused"
+            ;;
+        *)
+            echo "unknown"
+            ;;
+    esac
+}
+
+# Get VM resource usage
+get_vm_stats() {
+    local vm_name="$1"
+
+    if ! has_libvirt; then
+        return 1
+    fi
+
+    if [[ "$(get_vm_status "$vm_name")" != "running" ]]; then
+        return 1
+    fi
+
+    # Get CPU and memory stats
+    local vcpus mem_max mem_used
+    vcpus=$(virsh vcpucount "$vm_name" --current 2>/dev/null || echo "?")
+    mem_max=$(virsh dominfo "$vm_name" 2>/dev/null | grep "Max memory" | awk '{print $3}')
+    mem_used=$(virsh dommemstat "$vm_name" 2>/dev/null | grep "actual" | awk '{print $2}')
+
+    if [[ -n "$mem_max" ]]; then
+        mem_max=$((mem_max / 1024))  # Convert to MB
+    fi
+    if [[ -n "$mem_used" ]]; then
+        mem_used=$((mem_used / 1024))  # Convert to MB
+    fi
+
+    echo "CPU:${vcpus} vCPUs|MEM:${mem_used:-?}/${mem_max:-?}MB"
+}
+
+# List Proton/screen-based game servers (systemd services with screen)
+list_proton_servers() {
+    local servers=()
+
+    # Check for known Proton-based servers
+    if systemctl list-unit-files arkserver.service &>/dev/null 2>&1; then
+        servers+=("arkserver")
+    fi
+
+    # Also check for screen sessions matching server patterns
+    if has_screen; then
+        screen -ls 2>/dev/null | grep -oE "[0-9]+\.[a-z]+server" | cut -d'.' -f2 | while read -r name; do
+            echo "$name"
+        done
+    fi
+
+    # Output known Proton servers
+    for srv in "${servers[@]}"; do
+        echo "$srv"
+    done
+}
+
+# Get Proton/screen server status
+get_proton_server_status() {
+    local server_name="$1"
+
+    # First check systemd service
+    if systemctl is-active "${server_name}.service" &>/dev/null 2>&1; then
+        echo "running"
+        return 0
+    fi
+
+    # Check for screen session
+    if has_screen && screen -ls 2>/dev/null | grep -q "\.${server_name}"; then
+        echo "running"
+        return 0
+    fi
+
+    # Check if service exists but is stopped
+    if systemctl list-unit-files "${server_name}.service" &>/dev/null 2>&1; then
+        echo "stopped"
+        return 0
+    fi
+
+    echo "not_found"
+    return 1
+}
+
+# =============================================================================
+# DOCKER CONTAINER MONITORING
+# =============================================================================
+
 # List all game server containers (both running and stopped)
 list_game_containers() {
     docker ps -a --filter "label=gameserver=true" --format "{{.Names}}" 2>/dev/null
@@ -580,51 +711,417 @@ get_container_stats() {
 
 # Show all game servers status in a formatted table
 show_servers_status() {
+    local has_servers=false
+
+    # === DOCKER CONTAINERS ===
     local containers
     containers=$(list_game_containers | sort -u)
 
-    if [[ -z "$containers" ]]; then
+    if [[ -n "$containers" ]]; then
+        has_servers=true
         echo ""
-        log_warn "No game server containers found."
+        echo -e "${BOLD}Docker Containers:${RESET}"
+        separator "=" 80
+        printf "${BOLD}%-25s %-12s %-20s %-15s${RESET}\n" "CONTAINER" "STATUS" "TYPE" "PORTS"
+        separator "-" 80
+
+        while IFS= read -r container; do
+            [[ -z "$container" ]] && continue
+
+            local status image ports status_color
+
+            status=$(docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
+            image=$(docker inspect --format '{{.Config.Image}}' "$container" 2>/dev/null | cut -d'/' -f2 || echo "unknown")
+            ports=$(docker port "$container" 2>/dev/null | head -1 | cut -d':' -f2 | cut -d'-' -f1 || echo "-")
+
+            case "$status" in
+                running)
+                    status_color="${GREEN}"
+                    ;;
+                exited|stopped)
+                    status_color="${RED}"
+                    ;;
+                *)
+                    status_color="${YELLOW}"
+                    ;;
+            esac
+
+            printf "%-25s ${status_color}%-12s${RESET} %-20s %-15s\n" "$container" "$status" "$image" "$ports"
+        done <<< "$containers"
+
+        separator "=" 80
+    fi
+
+    # === WINDOWS VMs (libvirt) ===
+    if has_libvirt; then
+        local vms
+        vms=$(list_windows_vms)
+
+        if [[ -n "$vms" ]]; then
+            has_servers=true
+            echo ""
+            echo -e "${BOLD}Windows Virtual Machines:${RESET}"
+            separator "=" 80
+            printf "${BOLD}%-25s %-12s %-20s %-15s${RESET}\n" "VM NAME" "STATUS" "TYPE" "VCPUS/MEM"
+            separator "-" 80
+
+            while IFS= read -r vm; do
+                [[ -z "$vm" ]] && continue
+
+                local status status_color vcpus mem_max
+
+                status=$(get_vm_status "$vm")
+                vcpus=$(virsh vcpucount "$vm" --current 2>/dev/null || echo "?")
+                mem_max=$(virsh dominfo "$vm" 2>/dev/null | grep "Max memory" | awk '{print $3}')
+                if [[ -n "$mem_max" ]]; then
+                    mem_max="$((mem_max / 1024))MB"
+                else
+                    mem_max="?"
+                fi
+
+                case "$status" in
+                    running)
+                        status_color="${GREEN}"
+                        ;;
+                    stopped)
+                        status_color="${RED}"
+                        ;;
+                    *)
+                        status_color="${YELLOW}"
+                        ;;
+                esac
+
+                printf "%-25s ${status_color}%-12s${RESET} %-20s %-15s\n" "$vm" "$status" "Windows VM" "${vcpus} vCPU / ${mem_max}"
+            done <<< "$vms"
+
+            separator "=" 80
+        fi
+    fi
+
+    # === PROTON/SCREEN SERVERS ===
+    local proton_servers
+    proton_servers=$(list_proton_servers | sort -u)
+
+    if [[ -n "$proton_servers" ]]; then
+        has_servers=true
         echo ""
-        return 0
+        echo -e "${BOLD}Proton/Native Servers (systemd):${RESET}"
+        separator "=" 80
+        printf "${BOLD}%-25s %-12s %-20s %-15s${RESET}\n" "SERVICE" "STATUS" "TYPE" "SCREEN"
+        separator "-" 80
+
+        while IFS= read -r server; do
+            [[ -z "$server" ]] && continue
+
+            local status status_color screen_status server_type
+
+            status=$(get_proton_server_status "$server")
+
+            # Determine server type
+            case "$server" in
+                arkserver)
+                    server_type="Proton (Wine)"
+                    ;;
+                *)
+                    server_type="Native/Screen"
+                    ;;
+            esac
+
+            # Check for screen session
+            if has_screen && screen -ls 2>/dev/null | grep -q "\.${server}"; then
+                screen_status="Active"
+            else
+                screen_status="-"
+            fi
+
+            case "$status" in
+                running)
+                    status_color="${GREEN}"
+                    ;;
+                stopped)
+                    status_color="${RED}"
+                    ;;
+                *)
+                    status_color="${YELLOW}"
+                    ;;
+            esac
+
+            printf "%-25s ${status_color}%-12s${RESET} %-20s %-15s\n" "$server" "$status" "$server_type" "$screen_status"
+        done <<< "$proton_servers"
+
+        separator "=" 80
+    fi
+
+    if [[ "$has_servers" == false ]]; then
+        echo ""
+        log_warn "No game servers found (Docker containers, VMs, or Proton servers)."
+        echo ""
     fi
 
     echo ""
-    separator "=" 80
-    printf "${BOLD}%-25s %-12s %-20s %-15s${RESET}\n" "CONTAINER" "STATUS" "IMAGE" "PORTS"
-    separator "-" 80
+}
 
-    while IFS= read -r container; do
-        [[ -z "$container" ]] && continue
+# Show detailed info for a Windows VM
+show_vm_details() {
+    local vm_name="$1"
 
-        local status image ports status_color
+    if ! has_libvirt; then
+        log_error "libvirt/virsh not available"
+        return 1
+    fi
 
-        status=$(docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
-        image=$(docker inspect --format '{{.Config.Image}}' "$container" 2>/dev/null | cut -d'/' -f2 || echo "unknown")
-        ports=$(docker port "$container" 2>/dev/null | head -1 | cut -d':' -f2 | cut -d'-' -f1 || echo "-")
+    if ! virsh dominfo "$vm_name" &>/dev/null; then
+        log_error "VM not found: ${vm_name}"
+        return 1
+    fi
 
-        case "$status" in
-            running)
-                status_color="${GREEN}"
-                ;;
-            exited|stopped)
-                status_color="${RED}"
-                ;;
-            *)
-                status_color="${YELLOW}"
-                ;;
-        esac
+    echo ""
+    separator "=" 60
+    echo -e "${BOLD}Windows VM Details: ${vm_name}${RESET}"
+    separator "-" 60
 
-        printf "%-25s ${status_color}%-12s${RESET} %-20s %-15s\n" "$container" "$status" "$image" "$ports"
-    done <<< "$containers"
+    local status vcpus mem_max autostart
 
-    separator "=" 80
+    status=$(get_vm_status "$vm_name")
+    vcpus=$(virsh vcpucount "$vm_name" --current 2>/dev/null || echo "?")
+    mem_max=$(virsh dominfo "$vm_name" 2>/dev/null | grep "Max memory" | awk '{print $3}')
+    autostart=$(virsh dominfo "$vm_name" 2>/dev/null | grep "Autostart" | awk '{print $2}')
+
+    if [[ -n "$mem_max" ]]; then
+        mem_max="$((mem_max / 1024)) MB"
+    fi
+
+    case "$status" in
+        running) echo -e "  ${CYAN}Status:${RESET}       ${GREEN}●${RESET} Running" ;;
+        stopped) echo -e "  ${CYAN}Status:${RESET}       ${RED}●${RESET} Stopped" ;;
+        paused)  echo -e "  ${CYAN}Status:${RESET}       ${YELLOW}●${RESET} Paused" ;;
+        *)       echo -e "  ${CYAN}Status:${RESET}       ${YELLOW}●${RESET} $status" ;;
+    esac
+
+    echo -e "  ${CYAN}vCPUs:${RESET}        $vcpus"
+    echo -e "  ${CYAN}Max Memory:${RESET}   $mem_max"
+    echo -e "  ${CYAN}Autostart:${RESET}    $autostart"
+
+    if [[ "$status" == "running" ]]; then
+        separator "-" 60
+        echo -e "${BOLD}Resource Usage:${RESET}"
+
+        # Get CPU usage (this requires polling)
+        local cpu_time
+        cpu_time=$(virsh domstats "$vm_name" --cpu-total 2>/dev/null | grep "cpu.time" | cut -d'=' -f2)
+        if [[ -n "$cpu_time" ]]; then
+            echo -e "  ${CYAN}CPU Time:${RESET}     ${cpu_time} ns"
+        fi
+
+        # Get memory usage
+        local mem_actual
+        mem_actual=$(virsh dommemstat "$vm_name" 2>/dev/null | grep "actual" | awk '{print $2}')
+        if [[ -n "$mem_actual" ]]; then
+            echo -e "  ${CYAN}Memory Used:${RESET}  $((mem_actual / 1024)) MB"
+        fi
+
+        separator "-" 60
+        echo -e "${BOLD}Network Interfaces:${RESET}"
+        virsh domiflist "$vm_name" 2>/dev/null | tail -n +3 | while read -r line; do
+            [[ -z "$line" ]] && continue
+            echo -e "  $line"
+        done
+    fi
+
+    separator "-" 60
+    echo -e "${BOLD}Management Commands:${RESET}"
+    echo -e "  ${GREEN}Start VM:${RESET}      sudo virsh start ${vm_name}"
+    echo -e "  ${GREEN}Stop VM:${RESET}       sudo virsh shutdown ${vm_name}"
+    echo -e "  ${GREEN}Force Stop:${RESET}    sudo virsh destroy ${vm_name}"
+    echo -e "  ${GREEN}Console:${RESET}       sudo virsh console ${vm_name}"
+    echo -e "  ${GREEN}VNC Viewer:${RESET}    virt-viewer ${vm_name}"
+
+    separator "=" 60
     echo ""
 }
 
-# Show detailed info for a specific server
+# Show detailed info for a Proton/screen server
+show_proton_server_details() {
+    local server_name="$1"
+
+    local status
+    status=$(get_proton_server_status "$server_name")
+
+    if [[ "$status" == "not_found" ]]; then
+        log_error "Server not found: ${server_name}"
+        return 1
+    fi
+
+    echo ""
+    separator "=" 60
+    echo -e "${BOLD}Proton/Native Server Details: ${server_name}${RESET}"
+    separator "-" 60
+
+    case "$status" in
+        running) echo -e "  ${CYAN}Status:${RESET}       ${GREEN}●${RESET} Running" ;;
+        stopped) echo -e "  ${CYAN}Status:${RESET}       ${RED}●${RESET} Stopped" ;;
+        *)       echo -e "  ${CYAN}Status:${RESET}       ${YELLOW}●${RESET} $status" ;;
+    esac
+
+    # Check systemd service status
+    if systemctl list-unit-files "${server_name}.service" &>/dev/null 2>&1; then
+        local svc_enabled
+        svc_enabled=$(systemctl is-enabled "${server_name}.service" 2>/dev/null || echo "disabled")
+        echo -e "  ${CYAN}Service:${RESET}      ${server_name}.service"
+        echo -e "  ${CYAN}Enabled:${RESET}      $svc_enabled"
+    fi
+
+    # Check screen session
+    if has_screen; then
+        local screen_info
+        screen_info=$(screen -ls 2>/dev/null | grep "\.${server_name}" || echo "")
+        if [[ -n "$screen_info" ]]; then
+            echo -e "  ${CYAN}Screen:${RESET}       Active"
+            echo -e "  ${DIM}$screen_info${RESET}"
+        else
+            echo -e "  ${CYAN}Screen:${RESET}       Not attached"
+        fi
+    fi
+
+    # Server type specific info
+    separator "-" 60
+    case "$server_name" in
+        arkserver)
+            echo -e "${BOLD}ARK: Survival Ascended Info:${RESET}"
+            echo -e "  ${CYAN}Type:${RESET}         Proton (Windows binary)"
+            if [[ -d "/opt/arkserver" ]]; then
+                echo -e "  ${CYAN}Install Dir:${RESET}  /opt/arkserver"
+            fi
+            if [[ -f "/opt/arkserver/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini" ]]; then
+                echo -e "  ${CYAN}Config:${RESET}       GameUserSettings.ini found"
+            fi
+            ;;
+        *)
+            echo -e "${BOLD}Server Type:${RESET} Native/Screen-based"
+            ;;
+    esac
+
+    separator "-" 60
+    echo -e "${BOLD}Management Commands:${RESET}"
+    echo -e "  ${GREEN}Start:${RESET}         sudo systemctl start ${server_name}"
+    echo -e "  ${GREEN}Stop:${RESET}          sudo systemctl stop ${server_name}"
+    echo -e "  ${GREEN}Restart:${RESET}       sudo systemctl restart ${server_name}"
+    echo -e "  ${GREEN}Status:${RESET}        sudo systemctl status ${server_name}"
+    if has_screen; then
+        echo -e "  ${GREEN}Console:${RESET}       screen -r ${server_name}"
+    fi
+
+    separator "=" 60
+    echo ""
+}
+
+# List all servers (containers, VMs, and Proton servers)
+list_all_servers() {
+    local servers=()
+
+    # Docker containers
+    while IFS= read -r container; do
+        [[ -n "$container" ]] && servers+=("docker:$container")
+    done < <(list_game_containers | sort -u)
+
+    # Windows VMs
+    if has_libvirt; then
+        while IFS= read -r vm; do
+            [[ -n "$vm" ]] && servers+=("vm:$vm")
+        done < <(list_windows_vms)
+    fi
+
+    # Proton/screen servers
+    while IFS= read -r srv; do
+        [[ -n "$srv" ]] && servers+=("proton:$srv")
+    done < <(list_proton_servers | sort -u)
+
+    # Output unique servers
+    printf '%s\n' "${servers[@]}" | sort -u
+}
+
+# Get server status (unified for all types)
+get_server_status_unified() {
+    local server_spec="$1"
+    local type="${server_spec%%:*}"
+    local name="${server_spec#*:}"
+
+    case "$type" in
+        docker)
+            get_container_status "$name"
+            ;;
+        vm)
+            get_vm_status "$name"
+            ;;
+        proton)
+            get_proton_server_status "$name"
+            ;;
+        *)
+            echo "unknown"
+            ;;
+    esac
+}
+
+# Control server (start/stop/restart) - unified for all types
+control_server() {
+    local server_spec="$1"
+    local action="$2"
+    local type="${server_spec%%:*}"
+    local name="${server_spec#*:}"
+
+    case "$type" in
+        docker)
+            case "$action" in
+                start)   docker start "$name" ;;
+                stop)    docker stop "$name" ;;
+                restart) docker restart "$name" ;;
+            esac
+            ;;
+        vm)
+            case "$action" in
+                start)   virsh start "$name" ;;
+                stop)    virsh shutdown "$name" ;;
+                restart) virsh reboot "$name" ;;
+            esac
+            ;;
+        proton)
+            case "$action" in
+                start)   systemctl start "${name}.service" ;;
+                stop)    systemctl stop "${name}.service" ;;
+                restart) systemctl restart "${name}.service" ;;
+            esac
+            ;;
+    esac
+}
+
+# Show detailed info for a specific server (any type)
 show_server_details() {
+    local container_name="$1"
+
+    # Check if it's a Docker container
+    if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${container_name}$"; then
+        show_docker_container_details "$container_name"
+        return
+    fi
+
+    # Check if it's a VM
+    if has_libvirt && virsh dominfo "$container_name" &>/dev/null 2>&1; then
+        show_vm_details "$container_name"
+        return
+    fi
+
+    # Check if it's a Proton/screen server
+    if [[ "$(get_proton_server_status "$container_name")" != "not_found" ]]; then
+        show_proton_server_details "$container_name"
+        return
+    fi
+
+    log_error "Server not found: ${container_name}"
+    return 1
+}
+
+# Show detailed info for a Docker container
+show_docker_container_details() {
     local container_name="$1"
 
     if ! docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then

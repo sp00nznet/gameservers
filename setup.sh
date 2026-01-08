@@ -370,11 +370,11 @@ show_monitor_menu() {
 
 # Select a server and show details
 select_and_show_details() {
-    local containers
-    containers=$(list_game_containers | sort -u)
+    local servers
+    servers=$(list_all_servers)
 
-    if [[ -z "$containers" ]]; then
-        log_warn "No game server containers found."
+    if [[ -z "$servers" ]]; then
+        log_warn "No game servers found."
         sleep 2
         return
     fi
@@ -384,13 +384,22 @@ select_and_show_details() {
     echo ""
 
     local i=1
-    declare -A container_map
-    while IFS= read -r container; do
-        [[ -z "$container" ]] && continue
-        echo -e "  ${GREEN}${i})${RESET} $container"
-        container_map[$i]="$container"
+    declare -A server_map
+    while IFS= read -r server_spec; do
+        [[ -z "$server_spec" ]] && continue
+        local type="${server_spec%%:*}"
+        local name="${server_spec#*:}"
+        local type_label
+        case "$type" in
+            docker) type_label="${CYAN}[Docker]${RESET}" ;;
+            vm)     type_label="${MAGENTA}[WinVM]${RESET}" ;;
+            proton) type_label="${YELLOW}[Proton]${RESET}" ;;
+            *)      type_label="[?]" ;;
+        esac
+        echo -e "  ${GREEN}${i})${RESET} ${type_label} $name"
+        server_map[$i]="$server_spec"
         ((i++))
-    done <<< "$containers"
+    done <<< "$servers"
 
     echo ""
     echo -en "${CYAN}Enter server number (or 'b' to go back): ${RESET}"
@@ -400,8 +409,10 @@ select_and_show_details() {
         return
     fi
 
-    if [[ -n "${container_map[$choice]}" ]]; then
-        show_server_details "${container_map[$choice]}"
+    if [[ -n "${server_map[$choice]}" ]]; then
+        local server_spec="${server_map[$choice]}"
+        local name="${server_spec#*:}"
+        show_server_details "$name"
         echo -en "Press Enter to continue..."
         read -r
     else
@@ -413,11 +424,11 @@ select_and_show_details() {
 # Select a server and control it (start/stop/restart)
 select_and_control_server() {
     local action="$1"
-    local containers
-    containers=$(list_game_containers | sort -u)
+    local servers
+    servers=$(list_all_servers)
 
-    if [[ -z "$containers" ]]; then
-        log_warn "No game server containers found."
+    if [[ -z "$servers" ]]; then
+        log_warn "No game servers found."
         sleep 2
         return
     fi
@@ -427,21 +438,29 @@ select_and_control_server() {
     echo ""
 
     local i=1
-    declare -A container_map
-    while IFS= read -r container; do
-        [[ -z "$container" ]] && continue
-        local status
-        status=$(get_container_status "$container")
+    declare -A server_map
+    while IFS= read -r server_spec; do
+        [[ -z "$server_spec" ]] && continue
+        local type="${server_spec%%:*}"
+        local name="${server_spec#*:}"
+        local status type_label
+        status=$(get_server_status_unified "$server_spec")
+        case "$type" in
+            docker) type_label="${CYAN}[Docker]${RESET}" ;;
+            vm)     type_label="${MAGENTA}[WinVM]${RESET}" ;;
+            proton) type_label="${YELLOW}[Proton]${RESET}" ;;
+            *)      type_label="[?]" ;;
+        esac
         local status_icon
         case "$status" in
             running) status_icon="${GREEN}●${RESET}" ;;
             stopped) status_icon="${RED}●${RESET}" ;;
             *) status_icon="${YELLOW}●${RESET}" ;;
         esac
-        echo -e "  ${GREEN}${i})${RESET} $container [$status_icon $status]"
-        container_map[$i]="$container"
+        echo -e "  ${GREEN}${i})${RESET} ${type_label} $name [$status_icon $status]"
+        server_map[$i]="$server_spec"
         ((i++))
-    done <<< "$containers"
+    done <<< "$servers"
 
     echo ""
     echo -en "${CYAN}Enter server number (or 'b' to go back): ${RESET}"
@@ -451,35 +470,16 @@ select_and_control_server() {
         return
     fi
 
-    if [[ -n "${container_map[$choice]}" ]]; then
-        local container="${container_map[$choice]}"
+    if [[ -n "${server_map[$choice]}" ]]; then
+        local server_spec="${server_map[$choice]}"
+        local name="${server_spec#*:}"
         echo ""
-        case "$action" in
-            start)
-                log_info "Starting ${container}..."
-                if docker start "$container" &>/dev/null; then
-                    log_success "Server started: ${container}"
-                else
-                    log_error "Failed to start: ${container}"
-                fi
-                ;;
-            stop)
-                log_info "Stopping ${container}..."
-                if docker stop "$container" &>/dev/null; then
-                    log_success "Server stopped: ${container}"
-                else
-                    log_error "Failed to stop: ${container}"
-                fi
-                ;;
-            restart)
-                log_info "Restarting ${container}..."
-                if docker restart "$container" &>/dev/null; then
-                    log_success "Server restarted: ${container}"
-                else
-                    log_error "Failed to restart: ${container}"
-                fi
-                ;;
-        esac
+        log_info "${action^}ing ${name}..."
+        if control_server "$server_spec" "$action" &>/dev/null; then
+            log_success "Server ${action}ed: ${name}"
+        else
+            log_error "Failed to ${action}: ${name}"
+        fi
         sleep 2
     else
         log_warn "Invalid selection."
@@ -489,11 +489,11 @@ select_and_control_server() {
 
 # Select a server and view its logs
 select_and_view_logs() {
-    local containers
-    containers=$(list_game_containers | sort -u)
+    local servers
+    servers=$(list_all_servers)
 
-    if [[ -z "$containers" ]]; then
-        log_warn "No game server containers found."
+    if [[ -z "$servers" ]]; then
+        log_warn "No game servers found."
         sleep 2
         return
     fi
@@ -503,13 +503,22 @@ select_and_view_logs() {
     echo ""
 
     local i=1
-    declare -A container_map
-    while IFS= read -r container; do
-        [[ -z "$container" ]] && continue
-        echo -e "  ${GREEN}${i})${RESET} $container"
-        container_map[$i]="$container"
+    declare -A server_map
+    while IFS= read -r server_spec; do
+        [[ -z "$server_spec" ]] && continue
+        local type="${server_spec%%:*}"
+        local name="${server_spec#*:}"
+        local type_label
+        case "$type" in
+            docker) type_label="${CYAN}[Docker]${RESET}" ;;
+            vm)     type_label="${MAGENTA}[WinVM]${RESET}" ;;
+            proton) type_label="${YELLOW}[Proton]${RESET}" ;;
+            *)      type_label="[?]" ;;
+        esac
+        echo -e "  ${GREEN}${i})${RESET} ${type_label} $name"
+        server_map[$i]="$server_spec"
         ((i++))
-    done <<< "$containers"
+    done <<< "$servers"
 
     echo ""
     echo -en "${CYAN}Enter server number (or 'b' to go back): ${RESET}"
@@ -519,17 +528,45 @@ select_and_view_logs() {
         return
     fi
 
-    if [[ -n "${container_map[$choice]}" ]]; then
-        local container="${container_map[$choice]}"
+    if [[ -n "${server_map[$choice]}" ]]; then
+        local server_spec="${server_map[$choice]}"
+        local type="${server_spec%%:*}"
+        local name="${server_spec#*:}"
         echo ""
         separator "=" 60
-        echo -e "${BOLD}Logs for: ${container}${RESET}"
+        echo -e "${BOLD}Logs for: ${name}${RESET}"
         echo -e "${DIM}(Press Ctrl+C to stop following logs)${RESET}"
         separator "-" 60
         echo ""
 
-        # Show last 50 lines then follow
-        docker logs --tail 50 -f "$container" 2>&1 || true
+        case "$type" in
+            docker)
+                # Docker container logs
+                docker logs --tail 50 -f "$name" 2>&1 || true
+                ;;
+            vm)
+                # Windows VM - show console or suggest virt-viewer
+                log_info "Windows VMs don't have direct log access."
+                echo ""
+                echo -e "${BOLD}Options for VM console access:${RESET}"
+                echo -e "  ${GREEN}Console:${RESET}     sudo virsh console ${name}"
+                echo -e "  ${GREEN}VNC Viewer:${RESET}  virt-viewer ${name}"
+                echo ""
+                log_info "Use virt-viewer for graphical access to the Windows VM."
+                ;;
+            proton)
+                # Proton/screen server - try journalctl or screen
+                if has_screen && screen -ls 2>/dev/null | grep -q "\.${name}"; then
+                    log_info "Attaching to screen session (Ctrl+A, D to detach)..."
+                    sleep 2
+                    screen -r "$name" || true
+                else
+                    # Try journalctl for systemd logs
+                    log_info "Showing systemd journal logs..."
+                    journalctl -u "${name}.service" -n 50 -f 2>&1 || true
+                fi
+                ;;
+        esac
 
         echo ""
         echo -en "Press Enter to continue..."
@@ -542,11 +579,24 @@ select_and_view_logs() {
 
 # Show live resource stats for all running servers
 show_live_stats() {
-    local containers
-    containers=$(docker ps --format '{{.Names}}' | grep -E "server$|server[0-9]*$" | sort -u)
+    local containers vms proton_servers
+    local has_any=false
 
-    if [[ -z "$containers" ]]; then
-        log_warn "No running game server containers found."
+    # Gather all running servers
+    containers=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E "server$|server[0-9]*$" | sort -u)
+    if has_libvirt; then
+        vms=$(list_windows_vms 2>/dev/null | while read -r vm; do
+            [[ $(get_vm_status "$vm") == "running" ]] && echo "$vm"
+        done)
+    fi
+    proton_servers=$(list_proton_servers 2>/dev/null | while read -r srv; do
+        [[ $(get_proton_server_status "$srv") == "running" ]] && echo "$srv"
+    done)
+
+    [[ -n "$containers" || -n "$vms" || -n "$proton_servers" ]] && has_any=true
+
+    if [[ "$has_any" != true ]]; then
+        log_warn "No running game servers found."
         sleep 2
         return
     fi
@@ -555,15 +605,68 @@ show_live_stats() {
     separator "=" 60
     echo -e "${BOLD}Live Resource Monitor${RESET}"
     echo -e "${DIM}(Press Ctrl+C to stop)${RESET}"
-    separator "-" 60
+    separator "=" 60
+
+    # Show Docker container stats if any
+    if [[ -n "$containers" ]]; then
+        echo ""
+        echo -e "${CYAN}${BOLD}Docker Containers:${RESET}"
+        separator "-" 60
+        docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.PIDs}}" $containers 2>/dev/null || true
+    fi
+
+    # Show Windows VM stats if any
+    if [[ -n "$vms" ]]; then
+        echo ""
+        echo -e "${MAGENTA}${BOLD}Windows VMs:${RESET}"
+        separator "-" 60
+        printf "%-20s %-10s %-15s %-10s\n" "NAME" "STATUS" "MEMORY" "vCPUs"
+        separator "-" 60
+        while IFS= read -r vm; do
+            [[ -z "$vm" ]] && continue
+            local stats
+            stats=$(get_vm_stats "$vm")
+            local mem vcpus
+            mem=$(echo "$stats" | grep -oP 'Memory: \K[^,]+' || echo "N/A")
+            vcpus=$(echo "$stats" | grep -oP 'vCPUs: \K\d+' || echo "N/A")
+            printf "%-20s ${GREEN}%-10s${RESET} %-15s %-10s\n" "$vm" "running" "$mem" "$vcpus"
+        done <<< "$vms"
+    fi
+
+    # Show Proton/native server stats if any
+    if [[ -n "$proton_servers" ]]; then
+        echo ""
+        echo -e "${YELLOW}${BOLD}Proton/Native Servers:${RESET}"
+        separator "-" 60
+        printf "%-20s %-10s %-20s\n" "NAME" "STATUS" "TYPE"
+        separator "-" 60
+        while IFS= read -r srv; do
+            [[ -z "$srv" ]] && continue
+            local srv_type="systemd"
+            if has_screen && screen -ls 2>/dev/null | grep -q "\.${srv}"; then
+                srv_type="screen"
+            fi
+            printf "%-20s ${GREEN}%-10s${RESET} %-20s\n" "$srv" "running" "$srv_type"
+        done <<< "$proton_servers"
+    fi
+
+    echo ""
+    separator "=" 60
     echo ""
 
-    # Run docker stats for game server containers
-    docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.PIDs}}" $containers || true
-
-    echo ""
-    echo -en "Press Enter to continue..."
-    read -r
+    # For continuous monitoring, offer docker stats for containers
+    if [[ -n "$containers" ]]; then
+        echo -e "${DIM}For live Docker stats, press 'd'. Otherwise press Enter to return.${RESET}"
+        read -r -n1 key
+        if [[ "$key" == "d" || "$key" == "D" ]]; then
+            echo ""
+            echo -e "${DIM}(Press Ctrl+C to stop live monitoring)${RESET}"
+            docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.PIDs}}" $containers || true
+        fi
+    else
+        echo -en "Press Enter to continue..."
+        read -r
+    fi
 }
 
 # =============================================================================
