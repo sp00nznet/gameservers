@@ -328,6 +328,45 @@ main() {
         sleep 2
     fi
 
+    # Check Docker prerequisites
+    if ! command_exists docker; then
+        log_error "Docker is not installed."
+        echo ""
+        echo -e "${BOLD}Docker is required to run game servers.${RESET}"
+        echo ""
+        echo "Install Docker using one of these methods:"
+        echo ""
+        echo -e "  ${GREEN}Ubuntu/Debian:${RESET}"
+        echo "    curl -fsSL https://get.docker.com | sh"
+        echo "    sudo usermod -aG docker \$USER"
+        echo ""
+        echo -e "  ${GREEN}Arch Linux:${RESET}"
+        echo "    sudo pacman -S docker"
+        echo "    sudo systemctl enable --now docker"
+        echo ""
+        echo -e "  ${GREEN}Fedora:${RESET}"
+        echo "    sudo dnf install docker"
+        echo "    sudo systemctl enable --now docker"
+        echo ""
+        echo "After installation, log out and back in for group changes to take effect."
+        echo ""
+        exit 1
+    fi
+
+    if ! docker info &>/dev/null; then
+        log_error "Docker daemon is not running."
+        echo ""
+        echo "Start Docker with:"
+        echo "  sudo systemctl start docker"
+        echo ""
+        echo "To enable Docker on boot:"
+        echo "  sudo systemctl enable docker"
+        echo ""
+        exit 1
+    fi
+
+    log_success "Docker is available"
+
     # Select menu type
     if [[ "$force_text" == true ]] || ! command_exists dialog; then
         if ! command_exists dialog && [[ "$force_text" != true ]]; then

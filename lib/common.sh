@@ -285,5 +285,190 @@ separator() {
     printf '%*s\n' "$width" '' | tr ' ' "$char"
 }
 
+# =============================================================================
+# DOCKER FUNCTIONS
+# =============================================================================
+
+# Docker data directory for persistent storage
+DOCKER_DATA_DIR="/opt/gameservers"
+
+# Check if Docker is installed and running
+check_docker() {
+    if ! command_exists docker; then
+        log_error "Docker is not installed."
+        log_info "Install Docker with: curl -fsSL https://get.docker.com | sh"
+        return 1
+    fi
+
+    if ! docker info &>/dev/null; then
+        log_error "Docker daemon is not running."
+        log_info "Start Docker with: systemctl start docker"
+        return 1
+    fi
+
+    log_success "Docker is available"
+    return 0
+}
+
+# Build a Docker image
+# Usage: build_docker_image <image_name> <dockerfile_content> [build_context_dir]
+build_docker_image() {
+    local image_name="$1"
+    local dockerfile_content="$2"
+    local build_context="${3:-/tmp/docker-build-$$}"
+
+    log_info "Building Docker image: ${image_name}..."
+
+    # Create build context directory
+    mkdir -p "$build_context"
+
+    # Write Dockerfile
+    echo "$dockerfile_content" > "${build_context}/Dockerfile"
+
+    # Build the image
+    if ! docker build -t "$image_name" "$build_context"; then
+        log_error "Failed to build Docker image: ${image_name}"
+        rm -rf "$build_context"
+        return 1
+    fi
+
+    # Cleanup
+    rm -rf "$build_context"
+
+    log_success "Docker image built: ${image_name}"
+    return 0
+}
+
+# Run a Docker container
+# Usage: run_docker_container <container_name> <image_name> <port_mappings> <volume_mappings> [extra_args]
+# port_mappings: "-p 27015:27015/udp -p 27015:27015/tcp"
+# volume_mappings: "-v /host/path:/container/path"
+run_docker_container() {
+    local container_name="$1"
+    local image_name="$2"
+    local port_mappings="$3"
+    local volume_mappings="$4"
+    local extra_args="${5:-}"
+
+    log_info "Starting Docker container: ${container_name}..."
+
+    # Stop and remove existing container if it exists
+    if docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
+        log_info "Removing existing container: ${container_name}"
+        docker stop "$container_name" 2>/dev/null || true
+        docker rm "$container_name" 2>/dev/null || true
+    fi
+
+    # Run the container
+    # shellcheck disable=SC2086
+    if ! docker run -d \
+        --name "$container_name" \
+        --restart unless-stopped \
+        $port_mappings \
+        $volume_mappings \
+        $extra_args \
+        "$image_name"; then
+        log_error "Failed to start Docker container: ${container_name}"
+        return 1
+    fi
+
+    log_success "Docker container started: ${container_name}"
+    return 0
+}
+
+# Stop a Docker container
+stop_docker_container() {
+    local container_name="$1"
+
+    if docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
+        log_info "Stopping Docker container: ${container_name}..."
+        docker stop "$container_name"
+        log_success "Container stopped: ${container_name}"
+    else
+        log_info "Container ${container_name} is not running"
+    fi
+}
+
+# Check if a Docker container is running
+container_is_running() {
+    local container_name="$1"
+    docker ps --format '{{.Names}}' | grep -q "^${container_name}$"
+}
+
+# Get container logs
+get_container_logs() {
+    local container_name="$1"
+    local lines="${2:-50}"
+    docker logs --tail "$lines" "$container_name"
+}
+
+# Create data directory for a game server
+create_game_data_dir() {
+    local game_name="$1"
+    local data_dir="${DOCKER_DATA_DIR}/${game_name}"
+
+    if [[ ! -d "$data_dir" ]]; then
+        log_info "Creating data directory: ${data_dir}"
+        mkdir -p "$data_dir"
+    fi
+
+    echo "$data_dir"
+}
+
+# Generate a base SteamCMD Dockerfile
+generate_steamcmd_dockerfile() {
+    local app_id="$1"
+    local install_dir="$2"
+    local extra_packages="${3:-}"
+
+    cat << EOF
+FROM debian:bookworm-slim
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+RUN dpkg --add-architecture i386 && \\
+    apt-get update && \\
+    apt-get install -y --no-install-recommends \\
+        ca-certificates \\
+        curl \\
+        lib32gcc-s1 \\
+        lib32stdc++6 \\
+        libsdl2-2.0-0:i386 \\
+        locales \\
+        ${extra_packages} \\
+    && rm -rf /var/lib/apt/lists/* \\
+    && locale-gen en_US.UTF-8
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+
+# Create steamcmd user
+RUN useradd -m -s /bin/bash steam
+WORKDIR /home/steam
+
+# Install SteamCMD
+RUN mkdir -p /home/steam/steamcmd && \\
+    cd /home/steam/steamcmd && \\
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \\
+    chown -R steam:steam /home/steam
+
+# Create game directory
+RUN mkdir -p ${install_dir} && chown -R steam:steam ${install_dir}
+
+USER steam
+
+# Install game server
+RUN /home/steam/steamcmd/steamcmd.sh \\
+    +force_install_dir ${install_dir} \\
+    +login anonymous \\
+    +app_update ${app_id} validate \\
+    +quit
+
+WORKDIR ${install_dir}
+EOF
+}
+
 # Initialize logging on source
 init_logging

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Starbound Dedicated Server Setup
-# Downloads, configures, and runs a Starbound server using SteamCMD
+# Starbound Dedicated Server Setup (Docker)
+# Builds and runs a Starbound server in a Docker container
 #
 
 set -e
@@ -16,151 +16,150 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 
 # Server configuration
 readonly GAME_NAME="Starbound"
-readonly SERVICE_NAME="starboundserver"
+readonly CONTAINER_NAME="starboundserver"
+readonly IMAGE_NAME="gameservers/starbound"
 readonly STEAM_APP_ID="211820"
-readonly INSTALL_DIR="/opt/starboundserver"
-readonly WORKING_DIR="${INSTALL_DIR}/linux"
-readonly SERVER_BINARY="${INSTALL_DIR}/linux/starbound_server"
+readonly INSTALL_DIR="/home/steam/starboundserver"
 
 # Game server settings
-readonly SERVER_NAME="Silverware Starbound Server"
 readonly MAX_PLAYERS="8"
-readonly SERVER_PASSWORD=""
 
 # Network ports
 readonly GAME_PORT="21025"
 
-# Screen session name
-readonly SCREEN_NAME="${SERVICE_NAME}"
+# Data directory for persistent storage
+DATA_DIR=""
 
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
 
-# Validate prerequisites
 check_prerequisites() {
-    log_step 1 6 "Checking prerequisites..."
+    log_step 1 5 "Checking prerequisites..."
 
-    local deps=("curl" "tar" "screen" "systemctl")
-
-    if ! check_dependencies "${deps[@]}"; then
-        log_error "Missing dependencies. Please install them first."
+    if ! check_docker; then
+        log_error "Docker is required. Please install Docker first."
         exit 1
     fi
 
     log_success "All prerequisites satisfied"
 }
 
-# Install SteamCMD
-setup_steamcmd() {
-    log_step 2 6 "Setting up SteamCMD..."
+generate_dockerfile() {
+    cat << 'EOF'
+FROM debian:bookworm-slim
 
-    if ! install_steamcmd; then
-        log_error "Failed to install SteamCMD"
-        exit 1
-    fi
-}
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Download/update game files
-download_game_files() {
-    log_step 3 6 "Downloading ${GAME_NAME} server files..."
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        lib32gcc-s1 \
+        lib32stdc++6 \
+        locales \
+    && rm -rf /var/lib/apt/lists/* \
+    && locale-gen en_US.UTF-8
 
-    # Create install directory if needed
-    if [[ ! -d "$INSTALL_DIR" ]]; then
-        log_info "Creating install directory: ${INSTALL_DIR}"
-        mkdir -p "$INSTALL_DIR"
-    fi
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
 
-    if ! run_steamcmd "$INSTALL_DIR" "$STEAM_APP_ID"; then
-        log_error "Failed to download game files"
-        exit 1
-    fi
+RUN useradd -m -s /bin/bash steam
+WORKDIR /home/steam
 
-    # Make server binary executable
-    chmod +x "${SERVER_BINARY}" 2>/dev/null || true
+RUN mkdir -p /home/steam/steamcmd && \
+    cd /home/steam/steamcmd && \
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
+    chown -R steam:steam /home/steam
 
-    log_success "Game files downloaded"
-}
+RUN mkdir -p /home/steam/starboundserver && chown -R steam:steam /home/steam/starboundserver
 
-# Generate systemd service file content
-generate_service_file() {
-    cat << EOF
-[Unit]
-Description=${GAME_NAME} Dedicated Server
-After=network.target
+USER steam
 
-[Service]
-Type=forking
-User=root
-WorkingDirectory=${WORKING_DIR}
-ExecStart=/usr/bin/screen -dmS "${SCREEN_NAME}" ${SERVER_BINARY}
-ExecStop=/usr/bin/screen -S "${SCREEN_NAME}" -X quit
-Restart=on-failure
-RestartSec=10
+RUN /home/steam/steamcmd/steamcmd.sh \
+    +force_install_dir /home/steam/starboundserver \
+    +login anonymous \
+    +app_update 211820 validate \
+    +quit
 
-[Install]
-WantedBy=multi-user.target
+WORKDIR /home/steam/starboundserver/linux
+
+RUN chmod +x starbound_server 2>/dev/null || true
+
+EXPOSE 21025/tcp
+
+ENTRYPOINT ["./starbound_server"]
 EOF
 }
 
-# Create systemd service
-setup_systemd_service() {
-    log_step 4 6 "Creating systemd service..."
+build_image() {
+    log_step 2 5 "Building Docker image..."
+    log_info "This may take a while for the initial build..."
 
-    local service_content
-    service_content="$(generate_service_file)"
+    local dockerfile
+    dockerfile="$(generate_dockerfile)"
 
-    if ! create_systemd_service "$SERVICE_NAME" "$service_content"; then
-        log_error "Failed to create systemd service"
+    if ! build_docker_image "$IMAGE_NAME" "$dockerfile"; then
+        log_error "Failed to build Docker image"
         exit 1
     fi
 }
 
-# Enable and start the service
-start_service() {
-    log_step 5 6 "Enabling and starting service..."
+setup_data_directory() {
+    log_step 3 5 "Setting up data directory..."
 
-    if ! enable_service "$SERVICE_NAME"; then
-        log_error "Failed to start service"
+    DATA_DIR=$(create_game_data_dir "starbound")
+    mkdir -p "${DATA_DIR}/storage"
+
+    log_success "Data directory ready: ${DATA_DIR}"
+}
+
+run_container() {
+    log_step 4 5 "Starting Docker container..."
+
+    local port_mappings="-p ${GAME_PORT}:${GAME_PORT}/tcp"
+    local volume_mappings="-v ${DATA_DIR}/storage:${INSTALL_DIR}/storage"
+
+    if ! run_docker_container "$CONTAINER_NAME" "$IMAGE_NAME" "$port_mappings" "$volume_mappings" ""; then
+        log_error "Failed to start container"
+        exit 1
+    fi
+
+    sleep 2
+    if container_is_running "$CONTAINER_NAME"; then
+        log_success "Container is running"
+    else
+        log_error "Container failed to start. Check logs with: docker logs ${CONTAINER_NAME}"
         exit 1
     fi
 }
 
-# Display completion summary
 show_summary() {
-    log_step 6 6 "Setup complete!"
+    log_step 5 5 "Setup complete!"
 
     echo ""
     separator "=" 60
-    echo ""
     echo -e "${BOLD}${GAME_NAME} Server Installation Summary${RESET}"
-    echo ""
     separator "-" 60
-    echo -e "  ${CYAN}Install Directory:${RESET}  ${INSTALL_DIR}"
-    echo -e "  ${CYAN}Service Name:${RESET}       ${SERVICE_NAME}"
+    echo -e "  ${CYAN}Container Name:${RESET}     ${CONTAINER_NAME}"
+    echo -e "  ${CYAN}Image Name:${RESET}         ${IMAGE_NAME}"
+    echo -e "  ${CYAN}Data Directory:${RESET}     ${DATA_DIR}"
     echo -e "  ${CYAN}Max Players:${RESET}        ${MAX_PLAYERS}"
-    echo -e "  ${CYAN}Game Port:${RESET}          ${GAME_PORT}"
+    echo -e "  ${CYAN}Game Port:${RESET}          ${GAME_PORT}/tcp"
     separator "-" 60
-    echo ""
-    echo -e "${BOLD}Useful Commands:${RESET}"
-    echo -e "  ${GREEN}Start server:${RESET}    systemctl start ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Stop server:${RESET}     systemctl stop ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Restart server:${RESET}  systemctl restart ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Server status:${RESET}   systemctl status ${SERVICE_NAME}"
-    echo -e "  ${GREEN}View console:${RESET}    screen -r ${SCREEN_NAME}"
-    echo ""
     echo -e "${BOLD}Configuration Files:${RESET}"
-    echo -e "  ${DIM}Server config:${RESET}   ${INSTALL_DIR}/storage/starbound_server.config"
-    echo ""
+    echo -e "  ${DIM}Server config:${RESET}   ${DATA_DIR}/storage/starbound_server.config"
     separator "-" 60
-    echo ""
-    echo -e "${YELLOW}Firewall:${RESET} Open these ports if using a firewall:"
-    echo -e "  ufw allow ${GAME_PORT}/tcp"
-    echo ""
+    echo -e "${BOLD}Useful Commands:${RESET}"
+    echo -e "  ${GREEN}Start server:${RESET}    docker start ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Stop server:${RESET}     docker stop ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}View logs:${RESET}       docker logs -f ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Console access:${RESET}  docker attach ${CONTAINER_NAME}"
     separator "=" 60
     echo ""
 
-    log_to_file "COMPLETE" "${GAME_NAME} server setup finished successfully"
+    log_to_file "COMPLETE" "${GAME_NAME} Docker server setup finished successfully"
 }
 
 # =============================================================================
@@ -168,18 +167,16 @@ show_summary() {
 # =============================================================================
 
 main() {
-    log_header "${GAME_NAME} Server Setup"
-    log_to_file "START" "Beginning ${GAME_NAME} server installation"
+    log_header "${GAME_NAME} Server Setup (Docker)"
+    log_to_file "START" "Beginning ${GAME_NAME} Docker server installation"
 
     check_prerequisites
-    setup_steamcmd
-    download_game_files
-    setup_systemd_service
-    start_service
+    setup_data_directory
+    build_image
+    run_container
     show_summary
 
     return 0
 }
 
-# Run main function
 main "$@"

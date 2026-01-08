@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# San Andreas Multiplayer (SA:MP) Dedicated Server Setup
-# Downloads, configures, and runs a SA:MP server
+# San Andreas Multiplayer (SA:MP) Dedicated Server Setup (Docker)
+# Builds and runs a SA:MP server in a Docker container
 #
 
 set -e
@@ -16,10 +16,9 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 
 # Server configuration
 readonly GAME_NAME="San Andreas Multiplayer"
-readonly SERVICE_NAME="sampserver"
-readonly INSTALL_DIR="/opt/sampserver"
-readonly WORKING_DIR="${INSTALL_DIR}"
-readonly SERVER_BINARY="${INSTALL_DIR}/samp03svr"
+readonly CONTAINER_NAME="sampserver"
+readonly IMAGE_NAME="gameservers/samp"
+readonly INSTALL_DIR="/home/samp/server"
 
 # Download URL for SA:MP server
 readonly SAMP_SERVER_URL="https://files.sa-mp.com/samp037svr_R2-1.tar.gz"
@@ -32,69 +31,91 @@ readonly RCON_PASSWORD="changeme"
 # Network ports
 readonly GAME_PORT="7777"
 
-# Screen session name
-readonly SCREEN_NAME="${SERVICE_NAME}"
+# Data directory for persistent storage
+DATA_DIR=""
 
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
 
-# Validate prerequisites
 check_prerequisites() {
-    log_step 1 6 "Checking prerequisites..."
+    log_step 1 5 "Checking prerequisites..."
 
-    local deps=("curl" "tar" "screen" "systemctl" "wget")
-
-    if ! check_dependencies "${deps[@]}"; then
-        log_error "Missing dependencies. Please install them first."
+    if ! check_docker; then
+        log_error "Docker is required. Please install Docker first."
         exit 1
-    fi
-
-    # Check for 32-bit libraries
-    if [[ $(uname -m) == "x86_64" ]]; then
-        log_info "64-bit system detected. Ensure 32-bit libraries are installed."
-        log_info "Run: apt-get install lib32gcc-s1 lib32stdc++6 if needed"
     fi
 
     log_success "All prerequisites satisfied"
 }
 
-# Download server files
-download_game_files() {
-    log_step 2 6 "Downloading ${GAME_NAME} server files..."
+generate_dockerfile() {
+    cat << 'EOF'
+FROM debian:bookworm-slim
 
-    # Create install directory if needed
-    if [[ ! -d "$INSTALL_DIR" ]]; then
-        log_info "Creating install directory: ${INSTALL_DIR}"
-        mkdir -p "$INSTALL_DIR"
-    fi
+ENV DEBIAN_FRONTEND=noninteractive
 
-    # Download SA:MP server
-    local archive_file="/tmp/samp-server.tar.gz"
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        wget \
+        lib32gcc-s1 \
+        lib32stdc++6 \
+        locales \
+    && rm -rf /var/lib/apt/lists/* \
+    && locale-gen en_US.UTF-8
 
-    log_info "Downloading SA:MP server..."
-    if ! wget -q -O "$archive_file" "$SAMP_SERVER_URL"; then
-        log_error "Failed to download SA:MP server files"
-        exit 1
-    fi
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
 
-    log_info "Extracting server files..."
-    tar -xzf "$archive_file" -C "$INSTALL_DIR" --strip-components=1
-    rm -f "$archive_file"
+RUN useradd -m -s /bin/bash samp
+WORKDIR /home/samp
 
-    # Make server binary executable
-    chmod +x "${SERVER_BINARY}" 2>/dev/null || true
+RUN mkdir -p /home/samp/server && \
+    cd /home/samp/server && \
+    wget -q -O /tmp/samp-server.tar.gz "https://files.sa-mp.com/samp037svr_R2-1.tar.gz" && \
+    tar -xzf /tmp/samp-server.tar.gz -C /home/samp/server --strip-components=1 && \
+    rm -f /tmp/samp-server.tar.gz && \
+    chmod +x samp03svr && \
+    chown -R samp:samp /home/samp
 
-    log_success "Server files downloaded"
+USER samp
+WORKDIR /home/samp/server
+
+EXPOSE 7777/udp
+
+ENTRYPOINT ["./samp03svr"]
+EOF
 }
 
-# Create server configuration
-create_config() {
-    log_step 3 6 "Creating server configuration..."
+build_image() {
+    log_step 2 5 "Building Docker image..."
+    log_info "Downloading and building SA:MP server..."
 
-    local config_file="${INSTALL_DIR}/server.cfg"
+    local dockerfile
+    dockerfile="$(generate_dockerfile)"
 
-    cat > "$config_file" << EOF
+    if ! build_docker_image "$IMAGE_NAME" "$dockerfile"; then
+        log_error "Failed to build Docker image"
+        exit 1
+    fi
+}
+
+setup_data_directory() {
+    log_step 3 5 "Setting up data directory..."
+
+    DATA_DIR=$(create_game_data_dir "samp")
+    mkdir -p "${DATA_DIR}/gamemodes"
+    mkdir -p "${DATA_DIR}/filterscripts"
+    mkdir -p "${DATA_DIR}/scriptfiles"
+
+    # Create server configuration file
+    local config_file="${DATA_DIR}/server.cfg"
+    if [[ ! -f "$config_file" ]]; then
+        log_info "Creating server configuration..."
+        cat > "$config_file" << EOF
 echo Executing Server Config...
 lanmode 0
 rcon_password ${RCON_PASSWORD}
@@ -114,96 +135,64 @@ stream_rate 1000
 maxnpc 0
 logtimeformat [%H:%M:%S]
 EOF
+        log_success "Server configuration created"
+    fi
 
-    log_success "Configuration created"
+    log_success "Data directory ready: ${DATA_DIR}"
 }
 
-# Generate systemd service file content
-generate_service_file() {
-    cat << EOF
-[Unit]
-Description=${GAME_NAME} Dedicated Server
-After=network.target
+run_container() {
+    log_step 4 5 "Starting Docker container..."
 
-[Service]
-Type=forking
-User=root
-WorkingDirectory=${WORKING_DIR}
-ExecStart=/usr/bin/screen -dmS "${SCREEN_NAME}" ${SERVER_BINARY}
-ExecStop=/usr/bin/screen -S "${SCREEN_NAME}" -X quit
-Restart=on-failure
-RestartSec=10
+    local port_mappings="-p ${GAME_PORT}:${GAME_PORT}/udp"
+    local volume_mappings="-v ${DATA_DIR}/server.cfg:${INSTALL_DIR}/server.cfg -v ${DATA_DIR}/gamemodes:${INSTALL_DIR}/gamemodes -v ${DATA_DIR}/filterscripts:${INSTALL_DIR}/filterscripts -v ${DATA_DIR}/scriptfiles:${INSTALL_DIR}/scriptfiles"
 
-[Install]
-WantedBy=multi-user.target
-EOF
-}
+    if ! run_docker_container "$CONTAINER_NAME" "$IMAGE_NAME" "$port_mappings" "$volume_mappings" ""; then
+        log_error "Failed to start container"
+        exit 1
+    fi
 
-# Create systemd service
-setup_systemd_service() {
-    log_step 4 6 "Creating systemd service..."
-
-    local service_content
-    service_content="$(generate_service_file)"
-
-    if ! create_systemd_service "$SERVICE_NAME" "$service_content"; then
-        log_error "Failed to create systemd service"
+    sleep 2
+    if container_is_running "$CONTAINER_NAME"; then
+        log_success "Container is running"
+    else
+        log_error "Container failed to start. Check logs with: docker logs ${CONTAINER_NAME}"
         exit 1
     fi
 }
 
-# Enable and start the service
-start_service() {
-    log_step 5 6 "Enabling and starting service..."
-
-    if ! enable_service "$SERVICE_NAME"; then
-        log_error "Failed to start service"
-        exit 1
-    fi
-}
-
-# Display completion summary
 show_summary() {
-    log_step 6 6 "Setup complete!"
+    log_step 5 5 "Setup complete!"
 
     echo ""
     separator "=" 60
-    echo ""
     echo -e "${BOLD}${GAME_NAME} Server Installation Summary${RESET}"
-    echo ""
     separator "-" 60
-    echo -e "  ${CYAN}Install Directory:${RESET}  ${INSTALL_DIR}"
-    echo -e "  ${CYAN}Service Name:${RESET}       ${SERVICE_NAME}"
+    echo -e "  ${CYAN}Container Name:${RESET}     ${CONTAINER_NAME}"
+    echo -e "  ${CYAN}Image Name:${RESET}         ${IMAGE_NAME}"
+    echo -e "  ${CYAN}Data Directory:${RESET}     ${DATA_DIR}"
     echo -e "  ${CYAN}Max Players:${RESET}        ${MAX_PLAYERS}"
-    echo -e "  ${CYAN}Game Port:${RESET}          ${GAME_PORT}"
+    echo -e "  ${CYAN}Game Port:${RESET}          ${GAME_PORT}/udp"
     separator "-" 60
-    echo ""
     echo -e "${BOLD}Default Credentials (CHANGE THESE!):${RESET}"
     echo -e "  ${YELLOW}RCON Password:${RESET}      ${RCON_PASSWORD}"
     separator "-" 60
-    echo ""
-    echo -e "${BOLD}Useful Commands:${RESET}"
-    echo -e "  ${GREEN}Start server:${RESET}    systemctl start ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Stop server:${RESET}     systemctl stop ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Restart server:${RESET}  systemctl restart ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Server status:${RESET}   systemctl status ${SERVICE_NAME}"
-    echo -e "  ${GREEN}View console:${RESET}    screen -r ${SCREEN_NAME}"
-    echo ""
     echo -e "${BOLD}Configuration Files:${RESET}"
-    echo -e "  ${DIM}Server config:${RESET}   ${INSTALL_DIR}/server.cfg"
-    echo ""
+    echo -e "  ${DIM}Server config:${RESET}   ${DATA_DIR}/server.cfg"
+    separator "-" 60
     echo -e "${BOLD}Gamemodes:${RESET}"
-    echo -e "  ${DIM}Located in:${RESET}      ${INSTALL_DIR}/gamemodes/"
+    echo -e "  ${DIM}Located in:${RESET}      ${DATA_DIR}/gamemodes/"
     echo -e "  ${DIM}Default:${RESET}         grandlarc"
     separator "-" 60
-    echo ""
-    echo -e "${YELLOW}Firewall:${RESET} Open these ports if using a firewall:"
-    echo -e "  ufw allow ${GAME_PORT}/udp"
-    echo ""
+    echo -e "${BOLD}Useful Commands:${RESET}"
+    echo -e "  ${GREEN}Start server:${RESET}    docker start ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Stop server:${RESET}     docker stop ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}View logs:${RESET}       docker logs -f ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Console access:${RESET}  docker attach ${CONTAINER_NAME}"
     separator "=" 60
     echo ""
 
-    log_to_file "COMPLETE" "${GAME_NAME} server setup finished successfully"
+    log_to_file "COMPLETE" "${GAME_NAME} Docker server setup finished successfully"
 }
 
 # =============================================================================
@@ -211,18 +200,16 @@ show_summary() {
 # =============================================================================
 
 main() {
-    log_header "${GAME_NAME} Server Setup"
-    log_to_file "START" "Beginning ${GAME_NAME} server installation"
+    log_header "${GAME_NAME} Server Setup (Docker)"
+    log_to_file "START" "Beginning ${GAME_NAME} Docker server installation"
 
     check_prerequisites
-    download_game_files
-    create_config
-    setup_systemd_service
-    start_service
+    setup_data_directory
+    build_image
+    run_container
     show_summary
 
     return 0
 }
 
-# Run main function
 main "$@"

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Sven Co-op Dedicated Server Setup
-# Downloads, configures, and runs a Sven Co-op server using SteamCMD
+# Sven Co-op Dedicated Server Setup (Docker)
+# Builds and runs a Sven Co-op server in a Docker container
 #
 
 set -e
@@ -16,163 +16,163 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 
 # Server configuration
 readonly GAME_NAME="Sven Co-op"
-readonly SERVICE_NAME="svencoopserver"
+readonly CONTAINER_NAME="svencoopserver"
+readonly IMAGE_NAME="gameservers/svencoop"
 readonly STEAM_APP_ID="276060"
-readonly INSTALL_DIR="/opt/svencoopserver"
-readonly WORKING_DIR="${INSTALL_DIR}"
-readonly SERVER_BINARY="${INSTALL_DIR}/svends_run"
+readonly INSTALL_DIR="/home/steam/svencoopserver"
 
 # Game server settings
 readonly SERVER_NAME="Silverware Sven Co-op Server"
 readonly DEFAULT_MAP="svencoop1"
 readonly MAX_PLAYERS="12"
-readonly SERVER_PASSWORD=""
 readonly RCON_PASSWORD="changeme"
 
 # Network ports
 readonly GAME_PORT="27015"
-readonly CLIENT_PORT="27005"
 
-# Screen session name
-readonly SCREEN_NAME="${SERVICE_NAME}"
+# Data directory for persistent storage
+DATA_DIR=""
 
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
 
-# Validate prerequisites
 check_prerequisites() {
-    log_step 1 6 "Checking prerequisites..."
+    log_step 1 5 "Checking prerequisites..."
 
-    local deps=("curl" "tar" "screen" "systemctl")
-
-    if ! check_dependencies "${deps[@]}"; then
-        log_error "Missing dependencies. Please install them first."
+    if ! check_docker; then
+        log_error "Docker is required. Please install Docker first."
         exit 1
-    fi
-
-    # Check for 32-bit libraries
-    if [[ $(uname -m) == "x86_64" ]]; then
-        log_info "64-bit system detected. Ensure 32-bit libraries are installed."
-        log_info "Run: apt-get install lib32gcc-s1 if needed"
     fi
 
     log_success "All prerequisites satisfied"
 }
 
-# Install SteamCMD
-setup_steamcmd() {
-    log_step 2 6 "Setting up SteamCMD..."
+generate_dockerfile() {
+    cat << 'EOF'
+FROM debian:bookworm-slim
 
-    if ! install_steamcmd; then
-        log_error "Failed to install SteamCMD"
-        exit 1
-    fi
-}
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Download/update game files
-download_game_files() {
-    log_step 3 6 "Downloading ${GAME_NAME} server files..."
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        lib32gcc-s1 \
+        lib32stdc++6 \
+        locales \
+    && rm -rf /var/lib/apt/lists/* \
+    && locale-gen en_US.UTF-8
 
-    # Create install directory if needed
-    if [[ ! -d "$INSTALL_DIR" ]]; then
-        log_info "Creating install directory: ${INSTALL_DIR}"
-        mkdir -p "$INSTALL_DIR"
-    fi
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
 
-    if ! run_steamcmd "$INSTALL_DIR" "$STEAM_APP_ID"; then
-        log_error "Failed to download game files"
-        exit 1
-    fi
+RUN useradd -m -s /bin/bash steam
+WORKDIR /home/steam
 
-    log_success "Game files downloaded"
-}
+RUN mkdir -p /home/steam/steamcmd && \
+    cd /home/steam/steamcmd && \
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
+    chown -R steam:steam /home/steam
 
-# Generate systemd service file content
-generate_service_file() {
-    cat << EOF
-[Unit]
-Description=${GAME_NAME} Dedicated Server
-After=network.target
+RUN mkdir -p /home/steam/svencoopserver && chown -R steam:steam /home/steam/svencoopserver
 
-[Service]
-Type=forking
-User=root
-WorkingDirectory=${WORKING_DIR}
-ExecStart=/usr/bin/screen -dmS "${SCREEN_NAME}" ${SERVER_BINARY} +map ${DEFAULT_MAP} +maxplayers ${MAX_PLAYERS} +port ${GAME_PORT} +sv_lan 0 +rcon_password "${RCON_PASSWORD}"
-ExecStop=/usr/bin/screen -S "${SCREEN_NAME}" -X quit
-Restart=on-failure
-RestartSec=10
+USER steam
 
-[Install]
-WantedBy=multi-user.target
+RUN /home/steam/steamcmd/steamcmd.sh \
+    +force_install_dir /home/steam/svencoopserver \
+    +login anonymous \
+    +app_update 276060 validate \
+    +quit
+
+WORKDIR /home/steam/svencoopserver
+
+EXPOSE 27015/tcp 27015/udp
+
+ENTRYPOINT ["./svends_run"]
 EOF
 }
 
-# Create systemd service
-setup_systemd_service() {
-    log_step 4 6 "Creating systemd service..."
+build_image() {
+    log_step 2 5 "Building Docker image..."
+    log_info "This may take a while for the initial build..."
 
-    local service_content
-    service_content="$(generate_service_file)"
+    local dockerfile
+    dockerfile="$(generate_dockerfile)"
 
-    if ! create_systemd_service "$SERVICE_NAME" "$service_content"; then
-        log_error "Failed to create systemd service"
+    if ! build_docker_image "$IMAGE_NAME" "$dockerfile"; then
+        log_error "Failed to build Docker image"
         exit 1
     fi
 }
 
-# Enable and start the service
-start_service() {
-    log_step 5 6 "Enabling and starting service..."
+setup_data_directory() {
+    log_step 3 5 "Setting up data directory..."
 
-    if ! enable_service "$SERVICE_NAME"; then
-        log_error "Failed to start service"
+    DATA_DIR=$(create_game_data_dir "svencoop")
+    mkdir -p "${DATA_DIR}/svencoop"
+
+    local server_cfg="${DATA_DIR}/svencoop/server.cfg"
+    if [[ ! -f "$server_cfg" ]]; then
+        log_info "Creating default server.cfg..."
+        cat > "$server_cfg" << EOF
+// Sven Co-op Server Configuration
+hostname "${SERVER_NAME}"
+sv_password ""
+rcon_password "${RCON_PASSWORD}"
+sv_lan 0
+EOF
+        log_success "Default server.cfg created"
+    fi
+
+    log_success "Data directory ready: ${DATA_DIR}"
+}
+
+run_container() {
+    log_step 4 5 "Starting Docker container..."
+
+    local port_mappings="-p ${GAME_PORT}:${GAME_PORT}/tcp -p ${GAME_PORT}:${GAME_PORT}/udp"
+    local volume_mappings="-v ${DATA_DIR}/svencoop:${INSTALL_DIR}/svencoop"
+    local extra_args="+map ${DEFAULT_MAP} +maxplayers ${MAX_PLAYERS} +port ${GAME_PORT} +sv_lan 0 +rcon_password ${RCON_PASSWORD}"
+
+    if ! run_docker_container "$CONTAINER_NAME" "$IMAGE_NAME" "$port_mappings" "$volume_mappings" "$extra_args"; then
+        log_error "Failed to start container"
+        exit 1
+    fi
+
+    sleep 2
+    if container_is_running "$CONTAINER_NAME"; then
+        log_success "Container is running"
+    else
+        log_error "Container failed to start. Check logs with: docker logs ${CONTAINER_NAME}"
         exit 1
     fi
 }
 
-# Display completion summary
 show_summary() {
-    log_step 6 6 "Setup complete!"
+    log_step 5 5 "Setup complete!"
 
     echo ""
     separator "=" 60
-    echo ""
     echo -e "${BOLD}${GAME_NAME} Server Installation Summary${RESET}"
-    echo ""
     separator "-" 60
-    echo -e "  ${CYAN}Install Directory:${RESET}  ${INSTALL_DIR}"
-    echo -e "  ${CYAN}Service Name:${RESET}       ${SERVICE_NAME}"
+    echo -e "  ${CYAN}Container Name:${RESET}     ${CONTAINER_NAME}"
+    echo -e "  ${CYAN}Image Name:${RESET}         ${IMAGE_NAME}"
+    echo -e "  ${CYAN}Data Directory:${RESET}     ${DATA_DIR}"
     echo -e "  ${CYAN}Default Map:${RESET}        ${DEFAULT_MAP}"
     echo -e "  ${CYAN}Max Players:${RESET}        ${MAX_PLAYERS}"
     echo -e "  ${CYAN}Game Port:${RESET}          ${GAME_PORT}"
     separator "-" 60
-    echo ""
-    echo -e "${BOLD}Default Credentials (CHANGE THESE!):${RESET}"
-    echo -e "  ${YELLOW}RCON Password:${RESET}      ${RCON_PASSWORD}"
-    separator "-" 60
-    echo ""
     echo -e "${BOLD}Useful Commands:${RESET}"
-    echo -e "  ${GREEN}Start server:${RESET}    systemctl start ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Stop server:${RESET}     systemctl stop ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Restart server:${RESET}  systemctl restart ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Server status:${RESET}   systemctl status ${SERVICE_NAME}"
-    echo -e "  ${GREEN}View console:${RESET}    screen -r ${SCREEN_NAME}"
-    echo ""
-    echo -e "${BOLD}Configuration Files:${RESET}"
-    echo -e "  ${DIM}Server config:${RESET}   ${INSTALL_DIR}/svencoop/server.cfg"
-    echo ""
-    separator "-" 60
-    echo ""
-    echo -e "${YELLOW}Firewall:${RESET} Open these ports if using a firewall:"
-    echo -e "  ufw allow ${GAME_PORT}/tcp"
-    echo -e "  ufw allow ${GAME_PORT}/udp"
-    echo ""
+    echo -e "  ${GREEN}Start server:${RESET}    docker start ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Stop server:${RESET}     docker stop ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}View logs:${RESET}       docker logs -f ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Console access:${RESET}  docker attach ${CONTAINER_NAME}"
     separator "=" 60
     echo ""
 
-    log_to_file "COMPLETE" "${GAME_NAME} server setup finished successfully"
+    log_to_file "COMPLETE" "${GAME_NAME} Docker server setup finished successfully"
 }
 
 # =============================================================================
@@ -180,18 +180,16 @@ show_summary() {
 # =============================================================================
 
 main() {
-    log_header "${GAME_NAME} Server Setup"
-    log_to_file "START" "Beginning ${GAME_NAME} server installation"
+    log_header "${GAME_NAME} Server Setup (Docker)"
+    log_to_file "START" "Beginning ${GAME_NAME} Docker server installation"
 
     check_prerequisites
-    setup_steamcmd
-    download_game_files
-    setup_systemd_service
-    start_service
+    setup_data_directory
+    build_image
+    run_container
     show_summary
 
     return 0
 }
 
-# Run main function
 main "$@"

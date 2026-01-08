@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Black Mesa Dedicated Server Setup
-# Downloads, configures, and runs a Black Mesa server using SteamCMD
+# Black Mesa Dedicated Server Setup (Docker)
+# Builds and runs a Black Mesa server in a Docker container
 #
 
 set -e
@@ -16,99 +16,53 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 
 # Server configuration
 readonly GAME_NAME="Black Mesa"
-readonly SERVICE_NAME="bmserver"
+readonly CONTAINER_NAME="bmserver"
+readonly IMAGE_NAME="gameservers/blackmesa"
 readonly STEAM_APP_ID="346680"
-readonly INSTALL_DIR="/opt/bmserver"
-readonly WORKING_DIR="${INSTALL_DIR}"
-readonly SERVER_BINARY="${INSTALL_DIR}/srcds_run"
+readonly INSTALL_DIR="/home/steam/bmserver"
 
 # Game server settings
 readonly SERVER_NAME="Silverware Black Mesa Server"
 readonly DEFAULT_MAP="dm_bounce"
 readonly MAX_PLAYERS="16"
-readonly SERVER_PASSWORD=""
 readonly RCON_PASSWORD="changeme"
 
 # Network ports
 readonly GAME_PORT="27015"
-readonly CLIENT_PORT="27005"
 
 # Steam Game Server Login Token (GSLT)
-# Get your token from: https://steamcommunity.com/dev/managegameservers
-# App ID for Black Mesa: 362890 (base game)
 STEAM_GSLT_TOKEN="${STEAM_GSLT_TOKEN:-}"
 
-# Screen session name
-readonly SCREEN_NAME="${SERVICE_NAME}"
-
-# Config file for storing token
-readonly CONFIG_FILE="${INSTALL_DIR}/bmserver.conf"
+# Data directory for persistent storage
+DATA_DIR=""
 
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
 
-# Validate prerequisites
 check_prerequisites() {
-    log_step 1 7 "Checking prerequisites..."
+    log_step 1 6 "Checking prerequisites..."
 
-    local deps=("curl" "tar" "screen" "systemctl")
-
-    if ! check_dependencies "${deps[@]}"; then
-        log_error "Missing dependencies. Please install them first."
+    if ! check_docker; then
+        log_error "Docker is required. Please install Docker first."
         exit 1
-    fi
-
-    # Check for 32-bit libraries
-    if [[ $(uname -m) == "x86_64" ]]; then
-        log_info "64-bit system detected. Ensure 32-bit libraries are installed."
-        log_info "Run: apt-get install lib32gcc-s1 if needed"
     fi
 
     log_success "All prerequisites satisfied"
 }
 
-# Install SteamCMD
-setup_steamcmd() {
-    log_step 2 7 "Setting up SteamCMD..."
-
-    if ! install_steamcmd; then
-        log_error "Failed to install SteamCMD"
-        exit 1
-    fi
-}
-
-# Download/update game files
-download_game_files() {
-    log_step 3 7 "Downloading ${GAME_NAME} server files..."
-
-    # Create install directory if needed
-    if [[ ! -d "$INSTALL_DIR" ]]; then
-        log_info "Creating install directory: ${INSTALL_DIR}"
-        mkdir -p "$INSTALL_DIR"
-    fi
-
-    if ! run_steamcmd "$INSTALL_DIR" "$STEAM_APP_ID"; then
-        log_error "Failed to download game files"
-        exit 1
-    fi
-
-    log_success "Game files downloaded"
-}
-
-# Prompt for Steam GSLT token
 configure_steam_token() {
-    log_step 4 7 "Configuring Steam Game Server Login Token..."
+    log_step 2 6 "Configuring Steam Game Server Login Token..."
 
-    # Check if token is already set via environment variable
+    local config_file="${DATA_DIR}/bmserver.conf"
+
     if [[ -n "$STEAM_GSLT_TOKEN" ]]; then
         log_info "Using GSLT from environment variable"
         return 0
     fi
 
-    # Check if token exists in config file
-    if [[ -f "$CONFIG_FILE" ]]; then
-        source "$CONFIG_FILE"
+    if [[ -f "$config_file" ]]; then
+        source "$config_file"
         if [[ -n "$STEAM_GSLT_TOKEN" ]]; then
             log_info "Using GSLT from config file"
             return 0
@@ -133,72 +87,126 @@ configure_steam_token() {
 
     if [[ -n "$token_input" ]]; then
         STEAM_GSLT_TOKEN="$token_input"
-
-        # Save to config file
-        mkdir -p "$(dirname "$CONFIG_FILE")"
-        echo "# Black Mesa Server Configuration" > "$CONFIG_FILE"
-        echo "STEAM_GSLT_TOKEN=\"${STEAM_GSLT_TOKEN}\"" >> "$CONFIG_FILE"
-        chmod 600 "$CONFIG_FILE"
-
-        log_success "GSLT saved to ${CONFIG_FILE}"
+        echo "# Black Mesa Server Configuration" > "$config_file"
+        echo "STEAM_GSLT_TOKEN=\"${STEAM_GSLT_TOKEN}\"" >> "$config_file"
+        chmod 600 "$config_file"
+        log_success "GSLT saved to ${config_file}"
     else
         log_warn "No GSLT provided. Server may not appear in public browser."
-        log_info "You can set it later in: ${CONFIG_FILE}"
     fi
 }
 
-# Generate systemd service file content
-generate_service_file() {
+generate_dockerfile() {
+    cat << 'EOF'
+FROM debian:bookworm-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        lib32gcc-s1 \
+        lib32stdc++6 \
+        libsdl2-2.0-0:i386 \
+        locales \
+    && rm -rf /var/lib/apt/lists/* \
+    && locale-gen en_US.UTF-8
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+
+RUN useradd -m -s /bin/bash steam
+WORKDIR /home/steam
+
+RUN mkdir -p /home/steam/steamcmd && \
+    cd /home/steam/steamcmd && \
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
+    chown -R steam:steam /home/steam
+
+RUN mkdir -p /home/steam/bmserver && chown -R steam:steam /home/steam/bmserver
+
+USER steam
+
+RUN /home/steam/steamcmd/steamcmd.sh \
+    +force_install_dir /home/steam/bmserver \
+    +login anonymous \
+    +app_update 346680 validate \
+    +quit
+
+WORKDIR /home/steam/bmserver
+
+EXPOSE 27015/tcp 27015/udp
+
+ENTRYPOINT ["./srcds_run", "-console", "-game", "bms"]
+EOF
+}
+
+build_image() {
+    log_step 3 6 "Building Docker image..."
+    log_info "This may take a while for the initial build..."
+
+    local dockerfile
+    dockerfile="$(generate_dockerfile)"
+
+    if ! build_docker_image "$IMAGE_NAME" "$dockerfile"; then
+        log_error "Failed to build Docker image"
+        exit 1
+    fi
+}
+
+setup_data_directory() {
+    log_step 4 6 "Setting up data directory..."
+
+    DATA_DIR=$(create_game_data_dir "blackmesa")
+    mkdir -p "${DATA_DIR}/bms/cfg"
+
+    local server_cfg="${DATA_DIR}/bms/cfg/server.cfg"
+    if [[ ! -f "$server_cfg" ]]; then
+        log_info "Creating default server.cfg..."
+        cat > "$server_cfg" << EOF
+// Black Mesa Server Configuration
+hostname "${SERVER_NAME}"
+sv_password ""
+rcon_password "${RCON_PASSWORD}"
+sv_lan 0
+sv_cheats 0
+EOF
+        log_success "Default server.cfg created"
+    fi
+
+    log_success "Data directory ready: ${DATA_DIR}"
+}
+
+run_container() {
+    log_step 5 6 "Starting Docker container..."
+
     local gslt_param=""
     if [[ -n "$STEAM_GSLT_TOKEN" ]]; then
         gslt_param="+sv_setsteamaccount ${STEAM_GSLT_TOKEN}"
     fi
 
-    cat << EOF
-[Unit]
-Description=${GAME_NAME} Dedicated Server
-After=network.target
+    local port_mappings="-p ${GAME_PORT}:${GAME_PORT}/tcp -p ${GAME_PORT}:${GAME_PORT}/udp"
+    local volume_mappings="-v ${DATA_DIR}/bms/cfg:${INSTALL_DIR}/bms/cfg"
+    local extra_args="+map ${DEFAULT_MAP} +maxplayers ${MAX_PLAYERS} +port ${GAME_PORT} +sv_lan 0 +rcon_password ${RCON_PASSWORD} ${gslt_param}"
 
-[Service]
-Type=forking
-User=root
-WorkingDirectory=${WORKING_DIR}
-ExecStart=/usr/bin/screen -dmS "${SCREEN_NAME}" ${SERVER_BINARY} -console -game bms +map ${DEFAULT_MAP} +maxplayers ${MAX_PLAYERS} +port ${GAME_PORT} +sv_lan 0 +rcon_password "${RCON_PASSWORD}" ${gslt_param}
-ExecStop=/usr/bin/screen -S "${SCREEN_NAME}" -X quit
-Restart=on-failure
-RestartSec=10
+    if ! run_docker_container "$CONTAINER_NAME" "$IMAGE_NAME" "$port_mappings" "$volume_mappings" "$extra_args"; then
+        log_error "Failed to start container"
+        exit 1
+    fi
 
-[Install]
-WantedBy=multi-user.target
-EOF
-}
-
-# Create systemd service
-setup_systemd_service() {
-    log_step 5 7 "Creating systemd service..."
-
-    local service_content
-    service_content="$(generate_service_file)"
-
-    if ! create_systemd_service "$SERVICE_NAME" "$service_content"; then
-        log_error "Failed to create systemd service"
+    sleep 2
+    if container_is_running "$CONTAINER_NAME"; then
+        log_success "Container is running"
+    else
+        log_error "Container failed to start. Check logs with: docker logs ${CONTAINER_NAME}"
         exit 1
     fi
 }
 
-# Enable and start the service
-start_service() {
-    log_step 6 7 "Enabling and starting service..."
-
-    if ! enable_service "$SERVICE_NAME"; then
-        log_error "Failed to start service"
-        exit 1
-    fi
-}
-
-# Display completion summary
 show_summary() {
-    log_step 7 7 "Setup complete!"
+    log_step 6 6 "Setup complete!"
 
     local gslt_status="${RED}Not configured${RESET}"
     if [[ -n "$STEAM_GSLT_TOKEN" ]]; then
@@ -207,59 +215,29 @@ show_summary() {
 
     echo ""
     separator "=" 60
-    echo ""
     echo -e "${BOLD}${GAME_NAME} Server Installation Summary${RESET}"
-    echo ""
     separator "-" 60
-    echo -e "  ${CYAN}Install Directory:${RESET}  ${INSTALL_DIR}"
-    echo -e "  ${CYAN}Service Name:${RESET}       ${SERVICE_NAME}"
+    echo -e "  ${CYAN}Container Name:${RESET}     ${CONTAINER_NAME}"
+    echo -e "  ${CYAN}Image Name:${RESET}         ${IMAGE_NAME}"
+    echo -e "  ${CYAN}Data Directory:${RESET}     ${DATA_DIR}"
     echo -e "  ${CYAN}Default Map:${RESET}        ${DEFAULT_MAP}"
     echo -e "  ${CYAN}Max Players:${RESET}        ${MAX_PLAYERS}"
     echo -e "  ${CYAN}Game Port:${RESET}          ${GAME_PORT}"
     echo -e "  ${CYAN}GSLT Status:${RESET}        ${gslt_status}"
     separator "-" 60
-    echo ""
-    echo -e "${BOLD}Default Credentials (CHANGE THESE!):${RESET}"
-    echo -e "  ${YELLOW}RCON Password:${RESET}      ${RCON_PASSWORD}"
-    separator "-" 60
-    echo ""
     echo -e "${BOLD}Available Maps:${RESET}"
     echo -e "  ${DIM}dm_bounce, dm_chopper, dm_crossfire, dm_gasworks${RESET}"
     echo -e "  ${DIM}dm_lambdabunker, dm_power, dm_rail, dm_stack${RESET}"
-    echo -e "  ${DIM}dm_stalkyard, dm_subtransit, dm_undertow${RESET}"
     separator "-" 60
-    echo ""
     echo -e "${BOLD}Useful Commands:${RESET}"
-    echo -e "  ${GREEN}Start server:${RESET}    systemctl start ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Stop server:${RESET}     systemctl stop ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Restart server:${RESET}  systemctl restart ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Server status:${RESET}   systemctl status ${SERVICE_NAME}"
-    echo -e "  ${GREEN}View console:${RESET}    screen -r ${SCREEN_NAME}"
-    echo ""
-    echo -e "${BOLD}Configuration Files:${RESET}"
-    echo -e "  ${DIM}Server config:${RESET}   ${INSTALL_DIR}/bms/cfg/server.cfg"
-    echo -e "  ${DIM}GSLT config:${RESET}     ${CONFIG_FILE}"
-    echo ""
-
-    if [[ -z "$STEAM_GSLT_TOKEN" ]]; then
-        separator "-" 60
-        echo ""
-        echo -e "${YELLOW}Note:${RESET} To make your server public, add your GSLT to:"
-        echo -e "  ${CONFIG_FILE}"
-        echo ""
-        echo "Then restart the service: systemctl restart ${SERVICE_NAME}"
-    fi
-
-    separator "-" 60
-    echo ""
-    echo -e "${YELLOW}Firewall:${RESET} Open these ports if using a firewall:"
-    echo -e "  ufw allow ${GAME_PORT}/tcp"
-    echo -e "  ufw allow ${GAME_PORT}/udp"
-    echo ""
+    echo -e "  ${GREEN}Start server:${RESET}    docker start ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Stop server:${RESET}     docker stop ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}View logs:${RESET}       docker logs -f ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Console access:${RESET}  docker attach ${CONTAINER_NAME}"
     separator "=" 60
     echo ""
 
-    log_to_file "COMPLETE" "${GAME_NAME} server setup finished successfully"
+    log_to_file "COMPLETE" "${GAME_NAME} Docker server setup finished successfully"
 }
 
 # =============================================================================
@@ -267,19 +245,17 @@ show_summary() {
 # =============================================================================
 
 main() {
-    log_header "${GAME_NAME} Server Setup"
-    log_to_file "START" "Beginning ${GAME_NAME} server installation"
+    log_header "${GAME_NAME} Server Setup (Docker)"
+    log_to_file "START" "Beginning ${GAME_NAME} Docker server installation"
 
     check_prerequisites
-    setup_steamcmd
-    download_game_files
+    setup_data_directory
     configure_steam_token
-    setup_systemd_service
-    start_service
+    build_image
+    run_container
     show_summary
 
     return 0
 }
 
-# Run main function
 main "$@"
