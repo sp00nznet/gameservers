@@ -147,17 +147,21 @@ show_text_menu() {
         done
 
         separator "─" 60
+        echo -e "  ${CYAN}m)${RESET} Monitor deployed servers"
         echo -e "  ${YELLOW}q)${RESET} Quit"
         echo ""
         separator "─" 60
 
         echo ""
-        echo -en "${CYAN}Enter your choice [1-${#MENU_OPTIONS[@]}, q]: ${RESET}"
+        echo -en "${CYAN}Enter your choice [1-${#MENU_OPTIONS[@]}, m, q]: ${RESET}"
         read -r choice
 
         case "$choice" in
             [1-9]|1[0-9]|2[0-2])
                 run_setup "$choice"
+                ;;
+            m|M)
+                show_monitor_menu
                 ;;
             q|Q)
                 echo ""
@@ -181,6 +185,8 @@ show_dialog_menu() {
     for key in $(echo "${!MENU_OPTIONS[@]}" | tr ' ' '\n' | sort -n); do
         options+=("$key" "${MENU_OPTIONS[$key]} - ${MENU_DESCRIPTIONS[$key]}")
     done
+    # Add monitoring option
+    options+=("M" "Monitor Deployed Servers - View status, logs, control servers")
 
     while true; do
         choice=$(dialog --clear \
@@ -202,7 +208,9 @@ show_dialog_menu() {
             exit 0
         fi
 
-        if [[ -n "$choice" ]]; then
+        if [[ "$choice" == "M" ]]; then
+            show_monitor_menu
+        elif [[ -n "$choice" ]]; then
             run_setup "$choice"
         fi
     done
@@ -261,11 +269,15 @@ Options:
     -v, --version   Show version information
     -t, --text      Force text-based menu (no dialog)
     -l, --list      List available game servers
+    -m, --monitor   Open server monitoring menu
+    -s, --status    Show quick status of all deployed servers
 
 Examples:
     ${SCRIPT_NAME}           # Run interactive menu
     ${SCRIPT_NAME} --text    # Force text menu
     ${SCRIPT_NAME} --list    # Show available servers
+    ${SCRIPT_NAME} --monitor # Monitor deployed servers
+    ${SCRIPT_NAME} --status  # Quick server status check
 
 EOF
 }
@@ -283,11 +295,388 @@ list_servers() {
 }
 
 # =============================================================================
+# MONITORING FUNCTIONS
+# =============================================================================
+
+# Show monitoring menu
+show_monitor_menu() {
+    local choice
+
+    while true; do
+        show_banner
+        echo -e "${BOLD}Server Monitoring${RESET}"
+        echo ""
+
+        show_servers_status
+
+        separator "─" 60
+        echo -e "${BOLD}Actions:${RESET}"
+        echo ""
+        echo -e "  ${GREEN}1)${RESET} Refresh status"
+        echo -e "  ${GREEN}2)${RESET} View server details"
+        echo -e "  ${GREEN}3)${RESET} Start a server"
+        echo -e "  ${GREEN}4)${RESET} Stop a server"
+        echo -e "  ${GREEN}5)${RESET} Restart a server"
+        echo -e "  ${GREEN}6)${RESET} View server logs"
+        echo -e "  ${GREEN}7)${RESET} Live resource monitor"
+        echo ""
+        separator "─" 60
+        echo -e "  ${YELLOW}b)${RESET} Back to main menu"
+        echo -e "  ${YELLOW}q)${RESET} Quit"
+        echo ""
+        separator "─" 60
+
+        echo ""
+        echo -en "${CYAN}Enter your choice: ${RESET}"
+        read -r choice
+
+        case "$choice" in
+            1)
+                # Refresh - just continue loop
+                ;;
+            2)
+                select_and_show_details
+                ;;
+            3)
+                select_and_control_server "start"
+                ;;
+            4)
+                select_and_control_server "stop"
+                ;;
+            5)
+                select_and_control_server "restart"
+                ;;
+            6)
+                select_and_view_logs
+                ;;
+            7)
+                show_live_stats
+                ;;
+            b|B)
+                return 0
+                ;;
+            q|Q)
+                echo ""
+                log_info "Exiting. Goodbye!"
+                exit 0
+                ;;
+            *)
+                log_warn "Invalid option. Please try again."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+# Select a server and show details
+select_and_show_details() {
+    local servers
+    servers=$(list_all_servers)
+
+    if [[ -z "$servers" ]]; then
+        log_warn "No game servers found."
+        sleep 2
+        return
+    fi
+
+    echo ""
+    echo -e "${BOLD}Select a server to view details:${RESET}"
+    echo ""
+
+    local i=1
+    declare -A server_map
+    while IFS= read -r server_spec; do
+        [[ -z "$server_spec" ]] && continue
+        local type="${server_spec%%:*}"
+        local name="${server_spec#*:}"
+        local type_label
+        case "$type" in
+            docker) type_label="${CYAN}[Docker]${RESET}" ;;
+            vm)     type_label="${MAGENTA}[WinVM]${RESET}" ;;
+            proton) type_label="${YELLOW}[Proton]${RESET}" ;;
+            *)      type_label="[?]" ;;
+        esac
+        echo -e "  ${GREEN}${i})${RESET} ${type_label} $name"
+        server_map[$i]="$server_spec"
+        ((i++))
+    done <<< "$servers"
+
+    echo ""
+    echo -en "${CYAN}Enter server number (or 'b' to go back): ${RESET}"
+    read -r choice
+
+    if [[ "$choice" == "b" || "$choice" == "B" ]]; then
+        return
+    fi
+
+    if [[ -n "${server_map[$choice]}" ]]; then
+        local server_spec="${server_map[$choice]}"
+        local name="${server_spec#*:}"
+        show_server_details "$name"
+        echo -en "Press Enter to continue..."
+        read -r
+    else
+        log_warn "Invalid selection."
+        sleep 1
+    fi
+}
+
+# Select a server and control it (start/stop/restart)
+select_and_control_server() {
+    local action="$1"
+    local servers
+    servers=$(list_all_servers)
+
+    if [[ -z "$servers" ]]; then
+        log_warn "No game servers found."
+        sleep 2
+        return
+    fi
+
+    echo ""
+    echo -e "${BOLD}Select a server to ${action}:${RESET}"
+    echo ""
+
+    local i=1
+    declare -A server_map
+    while IFS= read -r server_spec; do
+        [[ -z "$server_spec" ]] && continue
+        local type="${server_spec%%:*}"
+        local name="${server_spec#*:}"
+        local status type_label
+        status=$(get_server_status_unified "$server_spec")
+        case "$type" in
+            docker) type_label="${CYAN}[Docker]${RESET}" ;;
+            vm)     type_label="${MAGENTA}[WinVM]${RESET}" ;;
+            proton) type_label="${YELLOW}[Proton]${RESET}" ;;
+            *)      type_label="[?]" ;;
+        esac
+        local status_icon
+        case "$status" in
+            running) status_icon="${GREEN}●${RESET}" ;;
+            stopped) status_icon="${RED}●${RESET}" ;;
+            *) status_icon="${YELLOW}●${RESET}" ;;
+        esac
+        echo -e "  ${GREEN}${i})${RESET} ${type_label} $name [$status_icon $status]"
+        server_map[$i]="$server_spec"
+        ((i++))
+    done <<< "$servers"
+
+    echo ""
+    echo -en "${CYAN}Enter server number (or 'b' to go back): ${RESET}"
+    read -r choice
+
+    if [[ "$choice" == "b" || "$choice" == "B" ]]; then
+        return
+    fi
+
+    if [[ -n "${server_map[$choice]}" ]]; then
+        local server_spec="${server_map[$choice]}"
+        local name="${server_spec#*:}"
+        echo ""
+        log_info "${action^}ing ${name}..."
+        if control_server "$server_spec" "$action" &>/dev/null; then
+            log_success "Server ${action}ed: ${name}"
+        else
+            log_error "Failed to ${action}: ${name}"
+        fi
+        sleep 2
+    else
+        log_warn "Invalid selection."
+        sleep 1
+    fi
+}
+
+# Select a server and view its logs
+select_and_view_logs() {
+    local servers
+    servers=$(list_all_servers)
+
+    if [[ -z "$servers" ]]; then
+        log_warn "No game servers found."
+        sleep 2
+        return
+    fi
+
+    echo ""
+    echo -e "${BOLD}Select a server to view logs:${RESET}"
+    echo ""
+
+    local i=1
+    declare -A server_map
+    while IFS= read -r server_spec; do
+        [[ -z "$server_spec" ]] && continue
+        local type="${server_spec%%:*}"
+        local name="${server_spec#*:}"
+        local type_label
+        case "$type" in
+            docker) type_label="${CYAN}[Docker]${RESET}" ;;
+            vm)     type_label="${MAGENTA}[WinVM]${RESET}" ;;
+            proton) type_label="${YELLOW}[Proton]${RESET}" ;;
+            *)      type_label="[?]" ;;
+        esac
+        echo -e "  ${GREEN}${i})${RESET} ${type_label} $name"
+        server_map[$i]="$server_spec"
+        ((i++))
+    done <<< "$servers"
+
+    echo ""
+    echo -en "${CYAN}Enter server number (or 'b' to go back): ${RESET}"
+    read -r choice
+
+    if [[ "$choice" == "b" || "$choice" == "B" ]]; then
+        return
+    fi
+
+    if [[ -n "${server_map[$choice]}" ]]; then
+        local server_spec="${server_map[$choice]}"
+        local type="${server_spec%%:*}"
+        local name="${server_spec#*:}"
+        echo ""
+        separator "=" 60
+        echo -e "${BOLD}Logs for: ${name}${RESET}"
+        echo -e "${DIM}(Press Ctrl+C to stop following logs)${RESET}"
+        separator "-" 60
+        echo ""
+
+        case "$type" in
+            docker)
+                # Docker container logs
+                docker logs --tail 50 -f "$name" 2>&1 || true
+                ;;
+            vm)
+                # Windows VM - show console or suggest virt-viewer
+                log_info "Windows VMs don't have direct log access."
+                echo ""
+                echo -e "${BOLD}Options for VM console access:${RESET}"
+                echo -e "  ${GREEN}Console:${RESET}     sudo virsh console ${name}"
+                echo -e "  ${GREEN}VNC Viewer:${RESET}  virt-viewer ${name}"
+                echo ""
+                log_info "Use virt-viewer for graphical access to the Windows VM."
+                ;;
+            proton)
+                # Proton/screen server - try journalctl or screen
+                if has_screen && screen -ls 2>/dev/null | grep -q "\.${name}"; then
+                    log_info "Attaching to screen session (Ctrl+A, D to detach)..."
+                    sleep 2
+                    screen -r "$name" || true
+                else
+                    # Try journalctl for systemd logs
+                    log_info "Showing systemd journal logs..."
+                    journalctl -u "${name}.service" -n 50 -f 2>&1 || true
+                fi
+                ;;
+        esac
+
+        echo ""
+        echo -en "Press Enter to continue..."
+        read -r
+    else
+        log_warn "Invalid selection."
+        sleep 1
+    fi
+}
+
+# Show live resource stats for all running servers
+show_live_stats() {
+    local containers vms proton_servers
+    local has_any=false
+
+    # Gather all running servers
+    containers=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E "server$|server[0-9]*$" | sort -u)
+    if has_libvirt; then
+        vms=$(list_windows_vms 2>/dev/null | while read -r vm; do
+            [[ $(get_vm_status "$vm") == "running" ]] && echo "$vm"
+        done)
+    fi
+    proton_servers=$(list_proton_servers 2>/dev/null | while read -r srv; do
+        [[ $(get_proton_server_status "$srv") == "running" ]] && echo "$srv"
+    done)
+
+    [[ -n "$containers" || -n "$vms" || -n "$proton_servers" ]] && has_any=true
+
+    if [[ "$has_any" != true ]]; then
+        log_warn "No running game servers found."
+        sleep 2
+        return
+    fi
+
+    echo ""
+    separator "=" 60
+    echo -e "${BOLD}Live Resource Monitor${RESET}"
+    echo -e "${DIM}(Press Ctrl+C to stop)${RESET}"
+    separator "=" 60
+
+    # Show Docker container stats if any
+    if [[ -n "$containers" ]]; then
+        echo ""
+        echo -e "${CYAN}${BOLD}Docker Containers:${RESET}"
+        separator "-" 60
+        docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.PIDs}}" $containers 2>/dev/null || true
+    fi
+
+    # Show Windows VM stats if any
+    if [[ -n "$vms" ]]; then
+        echo ""
+        echo -e "${MAGENTA}${BOLD}Windows VMs:${RESET}"
+        separator "-" 60
+        printf "%-20s %-10s %-15s %-10s\n" "NAME" "STATUS" "MEMORY" "vCPUs"
+        separator "-" 60
+        while IFS= read -r vm; do
+            [[ -z "$vm" ]] && continue
+            local stats
+            stats=$(get_vm_stats "$vm")
+            local mem vcpus
+            mem=$(echo "$stats" | grep -oP 'Memory: \K[^,]+' || echo "N/A")
+            vcpus=$(echo "$stats" | grep -oP 'vCPUs: \K\d+' || echo "N/A")
+            printf "%-20s ${GREEN}%-10s${RESET} %-15s %-10s\n" "$vm" "running" "$mem" "$vcpus"
+        done <<< "$vms"
+    fi
+
+    # Show Proton/native server stats if any
+    if [[ -n "$proton_servers" ]]; then
+        echo ""
+        echo -e "${YELLOW}${BOLD}Proton/Native Servers:${RESET}"
+        separator "-" 60
+        printf "%-20s %-10s %-20s\n" "NAME" "STATUS" "TYPE"
+        separator "-" 60
+        while IFS= read -r srv; do
+            [[ -z "$srv" ]] && continue
+            local srv_type="systemd"
+            if has_screen && screen -ls 2>/dev/null | grep -q "\.${srv}"; then
+                srv_type="screen"
+            fi
+            printf "%-20s ${GREEN}%-10s${RESET} %-20s\n" "$srv" "running" "$srv_type"
+        done <<< "$proton_servers"
+    fi
+
+    echo ""
+    separator "=" 60
+    echo ""
+
+    # For continuous monitoring, offer docker stats for containers
+    if [[ -n "$containers" ]]; then
+        echo -e "${DIM}For live Docker stats, press 'd'. Otherwise press Enter to return.${RESET}"
+        read -r -n1 key
+        if [[ "$key" == "d" || "$key" == "D" ]]; then
+            echo ""
+            echo -e "${DIM}(Press Ctrl+C to stop live monitoring)${RESET}"
+            docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.PIDs}}" $containers || true
+        fi
+    else
+        echo -en "Press Enter to continue..."
+        read -r
+    fi
+}
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
 main() {
     local force_text=false
+    local show_monitor=false
+    local show_status_only=false
 
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
@@ -308,6 +697,14 @@ main() {
                 list_servers
                 exit 0
                 ;;
+            -m|--monitor)
+                show_monitor=true
+                shift
+                ;;
+            -s|--status)
+                show_status_only=true
+                shift
+                ;;
             *)
                 log_error "Unknown option: $1"
                 show_usage
@@ -326,6 +723,57 @@ main() {
         log_warn "Consider running with: sudo ${SCRIPT_NAME}"
         echo ""
         sleep 2
+    fi
+
+    # Check Docker prerequisites
+    if ! command_exists docker; then
+        log_error "Docker is not installed."
+        echo ""
+        echo -e "${BOLD}Docker is required to run game servers.${RESET}"
+        echo ""
+        echo "Install Docker using one of these methods:"
+        echo ""
+        echo -e "  ${GREEN}Ubuntu/Debian:${RESET}"
+        echo "    curl -fsSL https://get.docker.com | sh"
+        echo "    sudo usermod -aG docker \$USER"
+        echo ""
+        echo -e "  ${GREEN}Arch Linux:${RESET}"
+        echo "    sudo pacman -S docker"
+        echo "    sudo systemctl enable --now docker"
+        echo ""
+        echo -e "  ${GREEN}Fedora:${RESET}"
+        echo "    sudo dnf install docker"
+        echo "    sudo systemctl enable --now docker"
+        echo ""
+        echo "After installation, log out and back in for group changes to take effect."
+        echo ""
+        exit 1
+    fi
+
+    if ! docker info &>/dev/null; then
+        log_error "Docker daemon is not running."
+        echo ""
+        echo "Start Docker with:"
+        echo "  sudo systemctl start docker"
+        echo ""
+        echo "To enable Docker on boot:"
+        echo "  sudo systemctl enable docker"
+        echo ""
+        exit 1
+    fi
+
+    log_success "Docker is available"
+
+    # Handle --status option (quick status check and exit)
+    if [[ "$show_status_only" == true ]]; then
+        show_servers_status
+        exit 0
+    fi
+
+    # Handle --monitor option (go directly to monitoring menu)
+    if [[ "$show_monitor" == true ]]; then
+        show_monitor_menu
+        exit 0
     fi
 
     # Select menu type

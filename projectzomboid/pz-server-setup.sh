@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Project Zomboid Dedicated Server Setup
-# Downloads, configures, and runs a PZ server using SteamCMD
+# Project Zomboid Dedicated Server Setup (Docker)
+# Builds and runs a PZ server in a Docker container
 #
 
 set -e
@@ -16,369 +16,215 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 
 # Server configuration
 readonly GAME_NAME="Project Zomboid"
-readonly SERVICE_NAME="pzserver"
+readonly CONTAINER_NAME="pzserver"
+readonly IMAGE_NAME="gameservers/projectzomboid"
 readonly STEAM_APP_ID="380870"
-readonly INSTALL_DIR="/opt/pzserver"
-readonly WORKING_DIR="${INSTALL_DIR}"
-readonly SERVER_BINARY="${INSTALL_DIR}/start-server.sh"
+readonly INSTALL_DIR="/home/steam/pzserver"
 
 # Game server settings
 readonly SERVER_NAME="Silverware PZ Server"
 readonly ADMIN_PASSWORD="changeme"
-readonly SERVER_PASSWORD=""
 readonly MAX_PLAYERS="16"
-readonly SERVER_PORT="16261"
-readonly UDP_PORT="16262"
-readonly RCON_PORT="27015"
-readonly RCON_PASSWORD="changeme_rcon"
-
-# Memory settings (adjust based on your server)
 readonly MEMORY_MIN="2048m"
 readonly MEMORY_MAX="4096m"
 
-# =============================================================================
-# WORKSHOP MODS CONFIGURATION
-# =============================================================================
-# Add Steam Workshop mod IDs here (comma-separated, no spaces)
-# Find mod IDs on the Steam Workshop URL: steamcommunity.com/sharedfiles/filedetails/?id=XXXXXXXXX
-#
-# Example popular mods:
-#   2392709985  - Brita's Weapon Pack
-#   2169435993  - Filibuster Rhymes' Used Cars
-#   2778576730  - Autotsar Tuning Atelier
-#   2313387159  - Authentic Z
-#   2650307290  - Arsenal(26) GunFighter
-#
-WORKSHOP_ITEMS=""
+# Network ports
+readonly SERVER_PORT="16261"
+readonly UDP_PORT="16262"
+readonly RCON_PORT="27015"
 
-# Mod folder names (comma-separated, must match Workshop mod folder names)
-# These are the folder names inside the mod's /mods/ directory
-# Example: "Brita,Filibuster,ATA,AuthenticZ"
-MODS=""
+# Workshop mod configuration
+WORKSHOP_ITEMS="${WORKSHOP_ITEMS:-}"
+MODS="${MODS:-}"
 
-# =============================================================================
-# SERVER DATA DIRECTORIES
-# =============================================================================
-# Server data directories
-readonly SERVER_DATA_DIR="/home/pzuser/Zomboid"
-readonly SERVER_CONFIG_DIR="${SERVER_DATA_DIR}/Server"
-
-# Screen session name
-readonly SCREEN_NAME="${SERVICE_NAME}"
-
-# Dedicated user for the server (security best practice)
-readonly SERVER_USER="pzuser"
+# Data directory for persistent storage
+DATA_DIR=""
 
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
 
-# Validate prerequisites
 check_prerequisites() {
-    log_step 1 8 "Checking prerequisites..."
+    log_step 1 5 "Checking prerequisites..."
 
-    local deps=("curl" "tar" "screen" "systemctl" "java")
-
-    # Check for basic dependencies first (excluding java)
-    local basic_deps=("curl" "tar" "screen" "systemctl")
-    if ! check_dependencies "${basic_deps[@]}"; then
-        log_error "Missing basic dependencies. Please install them first."
+    if ! check_docker; then
+        log_error "Docker is required. Please install Docker first."
         exit 1
-    fi
-
-    # Check for Java (required for PZ server)
-    if ! command_exists java; then
-        log_warn "Java not found. Project Zomboid requires Java 17+."
-        log_info "Install with: apt-get install openjdk-17-jre-headless"
-
-        if confirm "Would you like to attempt installing Java now?"; then
-            log_info "Installing Java..."
-            apt-get update && apt-get install -y openjdk-17-jre-headless
-        else
-            log_error "Java is required. Please install it and re-run this script."
-            exit 1
-        fi
-    fi
-
-    # Verify Java version
-    local java_version
-    java_version=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
-    if [[ "$java_version" -lt 17 ]]; then
-        log_warn "Java version ${java_version} detected. PZ recommends Java 17+."
-    else
-        log_info "Java ${java_version} detected"
     fi
 
     log_success "All prerequisites satisfied"
 }
 
-# Create dedicated user for the server
-setup_server_user() {
-    log_step 2 8 "Setting up server user..."
+generate_dockerfile() {
+    cat << 'EOF'
+FROM debian:bookworm-slim
 
-    if id "$SERVER_USER" &>/dev/null; then
-        log_info "User ${SERVER_USER} already exists"
-    else
-        log_info "Creating dedicated user: ${SERVER_USER}"
-        useradd -m -s /bin/bash "$SERVER_USER"
-        log_success "User ${SERVER_USER} created"
-    fi
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        lib32gcc-s1 \
+        lib32stdc++6 \
+        openjdk-17-jre-headless \
+        locales \
+    && rm -rf /var/lib/apt/lists/* \
+    && locale-gen en_US.UTF-8
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+
+RUN useradd -m -s /bin/bash steam
+WORKDIR /home/steam
+
+RUN mkdir -p /home/steam/steamcmd && \
+    cd /home/steam/steamcmd && \
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
+    chown -R steam:steam /home/steam
+
+RUN mkdir -p /home/steam/pzserver && chown -R steam:steam /home/steam/pzserver
+RUN mkdir -p /home/steam/Zomboid && chown -R steam:steam /home/steam/Zomboid
+
+USER steam
+
+RUN /home/steam/steamcmd/steamcmd.sh \
+    +force_install_dir /home/steam/pzserver \
+    +login anonymous \
+    +app_update 380870 validate \
+    +quit
+
+WORKDIR /home/steam/pzserver
+
+ENV LD_LIBRARY_PATH=/home/steam/pzserver/linux64:/home/steam/pzserver/natives:/home/steam/pzserver:/home/steam/pzserver/jre64/lib
+
+EXPOSE 16261/udp 16262/udp 27015/tcp
+
+ENTRYPOINT ["./start-server.sh"]
+EOF
 }
 
-# Install SteamCMD
-setup_steamcmd() {
-    log_step 3 8 "Setting up SteamCMD..."
-
-    if ! install_steamcmd; then
-        log_error "Failed to install SteamCMD"
-        exit 1
-    fi
-}
-
-# Download/update game files
-download_game_files() {
-    log_step 4 8 "Downloading ${GAME_NAME} server files..."
+build_image() {
+    log_step 2 5 "Building Docker image..."
     log_info "This may take a while for the initial download..."
 
-    # Create install directory if needed
-    if [[ ! -d "$INSTALL_DIR" ]]; then
-        log_info "Creating install directory: ${INSTALL_DIR}"
-        mkdir -p "$INSTALL_DIR"
-    fi
+    local dockerfile
+    dockerfile="$(generate_dockerfile)"
 
-    if ! run_steamcmd "$INSTALL_DIR" "$STEAM_APP_ID"; then
-        log_error "Failed to download game files"
+    if ! build_docker_image "$IMAGE_NAME" "$dockerfile"; then
+        log_error "Failed to build Docker image"
         exit 1
     fi
-
-    # Set ownership to server user
-    chown -R "${SERVER_USER}:${SERVER_USER}" "$INSTALL_DIR"
-
-    log_success "Game files downloaded and permissions set"
 }
 
-# Create server configuration
-configure_server() {
-    log_step 5 8 "Configuring server..."
+setup_data_directory() {
+    log_step 3 5 "Setting up data directory..."
 
-    # Create server data directory
-    mkdir -p "$SERVER_CONFIG_DIR"
+    DATA_DIR=$(create_game_data_dir "projectzomboid")
+    mkdir -p "${DATA_DIR}/Server"
+    mkdir -p "${DATA_DIR}/Saves"
 
     # Create server configuration file
-    local config_file="${SERVER_CONFIG_DIR}/${SERVICE_NAME}.ini"
-
-    log_info "Creating server configuration: ${config_file}"
-
-    cat > "$config_file" << EOF
+    local config_file="${DATA_DIR}/Server/${CONTAINER_NAME}.ini"
+    if [[ ! -f "$config_file" ]]; then
+        log_info "Creating server configuration..."
+        cat > "$config_file" << EOF
 # Project Zomboid Server Configuration
 # Generated by Silverware Game Servers Setup
 
-# Server Identity
 PublicName=${SERVER_NAME}
 PublicDescription=A Project Zomboid dedicated server
-
-# Connection Settings
 DefaultPort=${SERVER_PORT}
 UDPPort=${UDP_PORT}
 MaxPlayers=${MAX_PLAYERS}
-
-# Passwords
-Password=${SERVER_PASSWORD}
+Password=
 RCONPort=${RCON_PORT}
-RCONPassword=${RCON_PASSWORD}
+RCONPassword=changeme_rcon
 
-# Server Settings
 PauseEmpty=true
 GlobalChat=true
 Open=true
-AutoCreateUserInWhiteList=false
-DisplayUserName=true
-ShowFirstAndLastName=false
-
-# PVP Settings
 PVP=true
 SafetySystem=true
-ShowSafety=true
-SafetyToggleTimer=2
-SafetyCooldownTimer=3
 
-# Shared Map Settings
-ItemNumbersLimitPerContainer=0
-TrashDeleteAll=false
-PVPMeleeWhileHitReaction=false
-PVPFirearmDamageModifier=50
-PVPMeleeDamageModifier=30
-PVPMeleeWhileHitReaction=false
-
-# Anti-Cheat
-AntiCheatProtectionType1=true
-AntiCheatProtectionType2=true
-AntiCheatProtectionType3=true
-AntiCheatProtectionType4=true
-AntiCheatProtectionType5=true
-AntiCheatProtectionType6=true
-AntiCheatProtectionType7=true
-AntiCheatProtectionType8=true
-AntiCheatProtectionType9=true
-AntiCheatProtectionType10=true
-AntiCheatProtectionType11=true
-AntiCheatProtectionType12=true
-AntiCheatProtectionType13=true
-AntiCheatProtectionType14=true
-AntiCheatProtectionType15=true
-AntiCheatProtectionType16=true
-AntiCheatProtectionType17=true
-AntiCheatProtectionType18=true
-AntiCheatProtectionType19=true
-AntiCheatProtectionType20=true
-
-# Map
 Map=Muldraugh, KY
-
-# =============================================================================
-# WORKSHOP MODS
-# =============================================================================
-# Workshop Item IDs (comma-separated)
-# Edit the WORKSHOP_ITEMS variable at the top of pz-server-setup.sh to add mods
 WorkshopItems=${WORKSHOP_ITEMS}
-
-# Mod folder names (comma-separated)
-# Edit the MODS variable at the top of pz-server-setup.sh to add mod names
 Mods=${MODS}
 
-# Steam Settings
 SteamVAC=true
 EOF
+        log_success "Server configuration created"
+    fi
 
-    # Create server startup script with memory settings
-    local startup_script="${INSTALL_DIR}/start-server-custom.sh"
-    cat > "$startup_script" << EOF
-#!/bin/bash
-cd "${INSTALL_DIR}"
-export JAVA_HOME=\$(dirname \$(dirname \$(readlink -f \$(which java))))
-./start-server.sh -servername ${SERVICE_NAME} -adminpassword ${ADMIN_PASSWORD} -Xms${MEMORY_MIN} -Xmx${MEMORY_MAX}
-EOF
-    chmod +x "$startup_script"
-
-    # Set ownership
-    chown -R "${SERVER_USER}:${SERVER_USER}" "$SERVER_DATA_DIR"
-    chown -R "${SERVER_USER}:${SERVER_USER}" "$INSTALL_DIR"
-
-    log_success "Server configured"
+    log_success "Data directory ready: ${DATA_DIR}"
 }
 
-# Generate systemd service file content
-generate_service_file() {
-    cat << EOF
-[Unit]
-Description=${GAME_NAME} Dedicated Server
-After=network.target
+run_container() {
+    log_step 4 5 "Starting Docker container..."
 
-[Service]
-Type=forking
-User=${SERVER_USER}
-Group=${SERVER_USER}
-WorkingDirectory=${WORKING_DIR}
-Environment="LD_LIBRARY_PATH=${INSTALL_DIR}/linux64:${INSTALL_DIR}/natives:${INSTALL_DIR}:${INSTALL_DIR}/jre64/lib"
-ExecStart=/usr/bin/screen -dmS "${SCREEN_NAME}" ${INSTALL_DIR}/start-server-custom.sh
-ExecStop=/usr/bin/screen -S "${SCREEN_NAME}" -p 0 -X stuff "quit^M"
-ExecStop=/bin/sleep 10
-Restart=on-failure
-RestartSec=30
+    local port_mappings="-p ${SERVER_PORT}:${SERVER_PORT}/udp -p ${UDP_PORT}:${UDP_PORT}/udp -p ${RCON_PORT}:${RCON_PORT}/tcp"
+    local volume_mappings="-v ${DATA_DIR}:/home/steam/Zomboid"
+    local extra_args="-servername ${CONTAINER_NAME} -adminpassword ${ADMIN_PASSWORD} -Xms${MEMORY_MIN} -Xmx${MEMORY_MAX}"
 
-[Install]
-WantedBy=multi-user.target
-EOF
-}
-
-# Create systemd service
-setup_systemd_service() {
-    log_step 6 8 "Creating systemd service..."
-
-    local service_content
-    service_content="$(generate_service_file)"
-
-    if ! create_systemd_service "$SERVICE_NAME" "$service_content"; then
-        log_error "Failed to create systemd service"
+    if ! run_docker_container "$CONTAINER_NAME" "$IMAGE_NAME" "$port_mappings" "$volume_mappings" "$extra_args"; then
+        log_error "Failed to start container"
         exit 1
     fi
-}
 
-# Enable and start the service
-start_service() {
-    log_step 7 8 "Enabling and starting service..."
-
-    if ! enable_service "$SERVICE_NAME"; then
-        log_error "Failed to start service"
+    sleep 3
+    if container_is_running "$CONTAINER_NAME"; then
+        log_success "Container is running"
+    else
+        log_error "Container failed to start. Check logs with: docker logs ${CONTAINER_NAME}"
         exit 1
     fi
+
+    # Create systemd service for auto-start
+    create_docker_service "$CONTAINER_NAME" "${GAME_NAME} Dedicated Server"
 }
 
-# Display completion summary
 show_summary() {
-    log_step 8 8 "Setup complete!"
+    log_step 5 5 "Setup complete!"
 
     echo ""
     separator "=" 60
-    echo ""
     echo -e "${BOLD}${GAME_NAME} Server Installation Summary${RESET}"
-    echo ""
     separator "-" 60
-    echo -e "  ${CYAN}Install Directory:${RESET}  ${INSTALL_DIR}"
-    echo -e "  ${CYAN}Config Directory:${RESET}   ${SERVER_CONFIG_DIR}"
-    echo -e "  ${CYAN}Service Name:${RESET}       ${SERVICE_NAME}"
-    echo -e "  ${CYAN}Server Name:${RESET}        ${SERVER_NAME}"
-    echo -e "  ${CYAN}Server User:${RESET}        ${SERVER_USER}"
+    echo -e "  ${CYAN}Container Name:${RESET}     ${CONTAINER_NAME}"
+    echo -e "  ${CYAN}Image Name:${RESET}         ${IMAGE_NAME}"
+    echo -e "  ${CYAN}Data Directory:${RESET}     ${DATA_DIR}"
     echo -e "  ${CYAN}Max Players:${RESET}        ${MAX_PLAYERS}"
     echo -e "  ${CYAN}Memory:${RESET}             ${MEMORY_MIN} - ${MEMORY_MAX}"
     separator "-" 60
-    echo ""
     echo -e "${BOLD}Network Ports:${RESET}"
     echo -e "  ${CYAN}Game Port:${RESET}          ${SERVER_PORT}/udp"
     echo -e "  ${CYAN}UDP Port:${RESET}           ${UDP_PORT}/udp"
     echo -e "  ${CYAN}RCON Port:${RESET}          ${RCON_PORT}/tcp"
     separator "-" 60
-    echo ""
     echo -e "${BOLD}Default Credentials (CHANGE THESE!):${RESET}"
     echo -e "  ${YELLOW}Admin Password:${RESET}     ${ADMIN_PASSWORD}"
-    echo -e "  ${YELLOW}RCON Password:${RESET}      ${RCON_PASSWORD}"
     separator "-" 60
-    echo ""
-    echo -e "${BOLD}Useful Commands:${RESET}"
-    echo -e "  ${GREEN}Start server:${RESET}    systemctl start ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Stop server:${RESET}     systemctl stop ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Restart server:${RESET}  systemctl restart ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Server status:${RESET}   systemctl status ${SERVICE_NAME}"
-    echo -e "  ${GREEN}View console:${RESET}    sudo -u ${SERVER_USER} screen -r ${SCREEN_NAME}"
-    echo ""
     echo -e "${BOLD}Configuration Files:${RESET}"
-    echo -e "  ${DIM}Server config:${RESET}   ${SERVER_CONFIG_DIR}/${SERVICE_NAME}.ini"
-    echo -e "  ${DIM}Sandbox opts:${RESET}    ${SERVER_CONFIG_DIR}/${SERVICE_NAME}_SandboxVars.lua"
-    echo -e "  ${DIM}Setup script:${RESET}    ${SCRIPT_DIR}/pz-server-setup.sh"
-    echo ""
+    echo -e "  ${DIM}Server config:${RESET}   ${DATA_DIR}/Server/${CONTAINER_NAME}.ini"
+    echo -e "  ${DIM}Sandbox opts:${RESET}    ${DATA_DIR}/Server/${CONTAINER_NAME}_SandboxVars.lua"
+    separator "-" 60
     echo -e "${BOLD}Workshop Mods:${RESET}"
     if [[ -n "$WORKSHOP_ITEMS" ]]; then
         echo -e "  ${GREEN}Configured:${RESET}      ${WORKSHOP_ITEMS}"
     else
-        echo -e "  ${DIM}None configured${RESET}"
+        echo -e "  ${DIM}None configured - edit WORKSHOP_ITEMS in setup script${RESET}"
     fi
-    echo -e "  ${DIM}To add mods, edit WORKSHOP_ITEMS and MODS variables in:${RESET}"
-    echo -e "  ${CYAN}${SCRIPT_DIR}/pz-server-setup.sh${RESET}"
-    echo ""
     separator "-" 60
-    echo ""
-    echo -e "${YELLOW}IMPORTANT:${RESET} Change the default passwords in:"
-    echo -e "  ${SERVER_CONFIG_DIR}/${SERVICE_NAME}.ini"
-    echo ""
-    echo -e "${YELLOW}Firewall:${RESET} Open these ports if using a firewall:"
-    echo -e "  ufw allow ${SERVER_PORT}/udp"
-    echo -e "  ufw allow ${UDP_PORT}/udp"
-    echo -e "  ufw allow ${RCON_PORT}/tcp"
-    echo ""
+    echo -e "${BOLD}Useful Commands:${RESET}"
+    echo -e "  ${GREEN}Start server:${RESET}    docker start ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Stop server:${RESET}     docker stop ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}View logs:${RESET}       docker logs -f ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Console access:${RESET}  docker attach ${CONTAINER_NAME}"
     separator "=" 60
     echo ""
 
-    log_to_file "COMPLETE" "${GAME_NAME} server setup finished successfully"
+    log_to_file "COMPLETE" "${GAME_NAME} Docker server setup finished successfully"
 }
 
 # =============================================================================
@@ -386,20 +232,16 @@ show_summary() {
 # =============================================================================
 
 main() {
-    log_header "${GAME_NAME} Server Setup"
-    log_to_file "START" "Beginning ${GAME_NAME} server installation"
+    log_header "${GAME_NAME} Server Setup (Docker)"
+    log_to_file "START" "Beginning ${GAME_NAME} Docker server installation"
 
     check_prerequisites
-    setup_server_user
-    setup_steamcmd
-    download_game_files
-    configure_server
-    setup_systemd_service
-    start_service
+    setup_data_directory
+    build_image
+    run_container
     show_summary
 
     return 0
 }
 
-# Run main function
 main "$@"

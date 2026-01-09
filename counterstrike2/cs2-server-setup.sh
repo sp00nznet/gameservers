@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Counter-Strike 2 Dedicated Server Setup
-# Downloads, configures, and runs a CS2 server using SteamCMD
+# Counter-Strike 2 Dedicated Server Setup (Docker)
+# Builds and runs a CS2 server in a Docker container
 #
 
 set -e
@@ -16,11 +16,10 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 
 # Server configuration
 readonly GAME_NAME="Counter-Strike 2"
-readonly SERVICE_NAME="cs2server"
+readonly CONTAINER_NAME="cs2server"
+readonly IMAGE_NAME="gameservers/cs2"
 readonly STEAM_APP_ID="730"
-readonly INSTALL_DIR="/opt/cs2server"
-readonly WORKING_DIR="${INSTALL_DIR}"
-readonly SERVER_BINARY="${INSTALL_DIR}/game/bin/linuxsteamrt64/cs2"
+readonly INSTALL_DIR="/home/steam/cs2server"
 
 # Game server settings
 readonly SERVER_NAME="Silverware CS2 Server"
@@ -39,11 +38,8 @@ readonly TV_PORT="27020"
 # App ID for CS2: 730
 STEAM_GSLT_TOKEN="${STEAM_GSLT_TOKEN:-}"
 
-# Screen session name
-readonly SCREEN_NAME="${SERVICE_NAME}"
-
-# Config file for storing token
-readonly CONFIG_FILE="${INSTALL_DIR}/cs2server.conf"
+# Data directory for persistent storage
+DATA_DIR=""
 
 # =============================================================================
 # FUNCTIONS
@@ -51,55 +47,21 @@ readonly CONFIG_FILE="${INSTALL_DIR}/cs2server.conf"
 
 # Validate prerequisites
 check_prerequisites() {
-    log_step 1 7 "Checking prerequisites..."
+    log_step 1 6 "Checking prerequisites..."
 
-    local deps=("curl" "tar" "screen" "systemctl")
-
-    if ! check_dependencies "${deps[@]}"; then
-        log_error "Missing dependencies. Please install them first."
-        exit 1
-    fi
-
-    # Check for 64-bit system (CS2 requires 64-bit)
-    if [[ $(uname -m) != "x86_64" ]]; then
-        log_error "Counter-Strike 2 requires a 64-bit system"
+    if ! check_docker; then
+        log_error "Docker is required. Please install Docker first."
         exit 1
     fi
 
     log_success "All prerequisites satisfied"
 }
 
-# Install SteamCMD
-setup_steamcmd() {
-    log_step 2 7 "Setting up SteamCMD..."
-
-    if ! install_steamcmd; then
-        log_error "Failed to install SteamCMD"
-        exit 1
-    fi
-}
-
-# Download/update game files
-download_game_files() {
-    log_step 3 7 "Downloading ${GAME_NAME} server files..."
-
-    # Create install directory if needed
-    if [[ ! -d "$INSTALL_DIR" ]]; then
-        log_info "Creating install directory: ${INSTALL_DIR}"
-        mkdir -p "$INSTALL_DIR"
-    fi
-
-    if ! run_steamcmd "$INSTALL_DIR" "$STEAM_APP_ID"; then
-        log_error "Failed to download game files"
-        exit 1
-    fi
-
-    log_success "Game files downloaded"
-}
-
 # Prompt for Steam GSLT token
 configure_steam_token() {
-    log_step 4 7 "Configuring Steam Game Server Login Token..."
+    log_step 2 6 "Configuring Steam Game Server Login Token..."
+
+    local config_file="${DATA_DIR}/cs2server.conf"
 
     # Check if token is already set via environment variable
     if [[ -n "$STEAM_GSLT_TOKEN" ]]; then
@@ -108,8 +70,8 @@ configure_steam_token() {
     fi
 
     # Check if token exists in config file
-    if [[ -f "$CONFIG_FILE" ]]; then
-        source "$CONFIG_FILE"
+    if [[ -f "$config_file" ]]; then
+        source "$config_file"
         if [[ -n "$STEAM_GSLT_TOKEN" ]]; then
             log_info "Using GSLT from config file"
             return 0
@@ -136,70 +98,171 @@ configure_steam_token() {
         STEAM_GSLT_TOKEN="$token_input"
 
         # Save to config file
-        mkdir -p "$(dirname "$CONFIG_FILE")"
-        echo "# CS2 Server Configuration" > "$CONFIG_FILE"
-        echo "STEAM_GSLT_TOKEN=\"${STEAM_GSLT_TOKEN}\"" >> "$CONFIG_FILE"
-        chmod 600 "$CONFIG_FILE"
+        echo "# CS2 Server Configuration" > "$config_file"
+        echo "STEAM_GSLT_TOKEN=\"${STEAM_GSLT_TOKEN}\"" >> "$config_file"
+        chmod 600 "$config_file"
 
-        log_success "GSLT saved to ${CONFIG_FILE}"
+        log_success "GSLT saved to ${config_file}"
     else
         log_warn "No GSLT provided. Server may not function properly."
-        log_info "You can set it later in: ${CONFIG_FILE}"
+        log_info "You can set it later in: ${config_file}"
     fi
 }
 
-# Generate systemd service file content
-generate_service_file() {
+# Generate Dockerfile for CS2 server
+generate_dockerfile() {
+    cat << 'EOF'
+FROM debian:bookworm-slim
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        lib32gcc-s1 \
+        lib32stdc++6 \
+        locales \
+    && rm -rf /var/lib/apt/lists/* \
+    && locale-gen en_US.UTF-8
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+
+# Create steamcmd user
+RUN useradd -m -s /bin/bash steam
+WORKDIR /home/steam
+
+# Install SteamCMD
+RUN mkdir -p /home/steam/steamcmd && \
+    cd /home/steam/steamcmd && \
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
+    chown -R steam:steam /home/steam
+
+# Create game directory
+RUN mkdir -p /home/steam/cs2server && chown -R steam:steam /home/steam/cs2server
+
+USER steam
+
+# Install game server
+RUN /home/steam/steamcmd/steamcmd.sh \
+    +force_install_dir /home/steam/cs2server \
+    +login anonymous \
+    +app_update 730 validate \
+    +quit
+
+WORKDIR /home/steam/cs2server
+
+# Expose ports
+EXPOSE 27015/tcp 27015/udp 27020/udp
+
+# Default entrypoint - will be overridden with actual args at runtime
+ENTRYPOINT ["/home/steam/cs2server/game/bin/linuxsteamrt64/cs2"]
+EOF
+}
+
+# Build Docker image
+build_image() {
+    log_step 3 6 "Building Docker image..."
+    log_info "This may take a while for the initial build..."
+
+    local dockerfile
+    dockerfile="$(generate_dockerfile)"
+
+    if ! build_docker_image "$IMAGE_NAME" "$dockerfile"; then
+        log_error "Failed to build Docker image"
+        exit 1
+    fi
+}
+
+# Create server configuration directory
+setup_data_directory() {
+    log_step 4 6 "Setting up data directory..."
+
+    DATA_DIR=$(create_game_data_dir "cs2")
+
+    # Create config directories
+    mkdir -p "${DATA_DIR}/game/csgo/cfg"
+
+    # Create default server.cfg if it doesn't exist
+    local server_cfg="${DATA_DIR}/game/csgo/cfg/server.cfg"
+    if [[ ! -f "$server_cfg" ]]; then
+        log_info "Creating default server.cfg..."
+        cat > "$server_cfg" << EOF
+// CS2 Server Configuration
+// Generated by Silverware Game Servers
+
+hostname "${SERVER_NAME}"
+sv_password ""
+rcon_password "${RCON_PASSWORD}"
+
+// Server settings
+sv_cheats 0
+sv_lan 0
+sv_pure 1
+
+// Network settings
+sv_maxrate 0
+sv_minrate 128000
+
+// Logging
+log on
+sv_logbans 1
+sv_logecho 1
+sv_logfile 1
+sv_log_onefile 0
+EOF
+        log_success "Default server.cfg created"
+    else
+        log_info "Using existing server.cfg"
+    fi
+
+    log_success "Data directory ready: ${DATA_DIR}"
+}
+
+# Run the Docker container
+run_container() {
+    log_step 5 6 "Starting Docker container..."
+
     local gslt_param=""
     if [[ -n "$STEAM_GSLT_TOKEN" ]]; then
         gslt_param="+sv_setsteamaccount ${STEAM_GSLT_TOKEN}"
     fi
 
-    cat << EOF
-[Unit]
-Description=${GAME_NAME} Dedicated Server
-After=network.target
+    local port_mappings="-p ${GAME_PORT}:${GAME_PORT}/tcp -p ${GAME_PORT}:${GAME_PORT}/udp -p ${TV_PORT}:${TV_PORT}/udp"
+    local volume_mappings="-v ${DATA_DIR}/game/csgo/cfg:${INSTALL_DIR}/game/csgo/cfg"
 
-[Service]
-Type=forking
-User=root
-WorkingDirectory=${WORKING_DIR}
-ExecStart=/usr/bin/screen -dmS "${SCREEN_NAME}" ${SERVER_BINARY} -dedicated +map ${DEFAULT_MAP} +maxplayers ${MAX_PLAYERS} -port ${GAME_PORT} +game_type ${GAME_TYPE} +game_mode ${GAME_MODE} +rcon_password "${RCON_PASSWORD}" ${gslt_param}
-ExecStop=/usr/bin/screen -S "${SCREEN_NAME}" -X quit
-Restart=on-failure
-RestartSec=10
+    # Build command arguments
+    local cmd_args="-dedicated +map ${DEFAULT_MAP} +maxplayers ${MAX_PLAYERS} -port ${GAME_PORT} +game_type ${GAME_TYPE} +game_mode ${GAME_MODE} +rcon_password ${RCON_PASSWORD}"
+    if [[ -n "$gslt_param" ]]; then
+        cmd_args="${cmd_args} ${gslt_param}"
+    fi
 
-[Install]
-WantedBy=multi-user.target
-EOF
-}
-
-# Create systemd service
-setup_systemd_service() {
-    log_step 5 7 "Creating systemd service..."
-
-    local service_content
-    service_content="$(generate_service_file)"
-
-    if ! create_systemd_service "$SERVICE_NAME" "$service_content"; then
-        log_error "Failed to create systemd service"
+    if ! run_docker_container "$CONTAINER_NAME" "$IMAGE_NAME" "$port_mappings" "$volume_mappings" "$cmd_args"; then
+        log_error "Failed to start container"
         exit 1
     fi
-}
 
-# Enable and start the service
-start_service() {
-    log_step 6 7 "Enabling and starting service..."
+    # Give it a moment to start
+    sleep 2
 
-    if ! enable_service "$SERVICE_NAME"; then
-        log_error "Failed to start service"
+    if container_is_running "$CONTAINER_NAME"; then
+        log_success "Container is running"
+    else
+        log_error "Container failed to start. Check logs with: docker logs ${CONTAINER_NAME}"
         exit 1
     fi
+
+    # Create systemd service for auto-start
+    create_docker_service "$CONTAINER_NAME" "${GAME_NAME} Dedicated Server"
 }
 
 # Display completion summary
 show_summary() {
-    log_step 7 7 "Setup complete!"
+    log_step 6 6 "Setup complete!"
 
     local gslt_status="${RED}Not configured${RESET}"
     if [[ -n "$STEAM_GSLT_TOKEN" ]]; then
@@ -212,8 +275,9 @@ show_summary() {
     echo -e "${BOLD}${GAME_NAME} Server Installation Summary${RESET}"
     echo ""
     separator "-" 60
-    echo -e "  ${CYAN}Install Directory:${RESET}  ${INSTALL_DIR}"
-    echo -e "  ${CYAN}Service Name:${RESET}       ${SERVICE_NAME}"
+    echo -e "  ${CYAN}Container Name:${RESET}     ${CONTAINER_NAME}"
+    echo -e "  ${CYAN}Image Name:${RESET}         ${IMAGE_NAME}"
+    echo -e "  ${CYAN}Data Directory:${RESET}     ${DATA_DIR}"
     echo -e "  ${CYAN}Default Map:${RESET}        ${DEFAULT_MAP}"
     echo -e "  ${CYAN}Max Players:${RESET}        ${MAX_PLAYERS}"
     echo -e "  ${CYAN}Game Port:${RESET}          ${GAME_PORT}"
@@ -233,37 +297,32 @@ show_summary() {
     separator "-" 60
     echo ""
     echo -e "${BOLD}Useful Commands:${RESET}"
-    echo -e "  ${GREEN}Start server:${RESET}    systemctl start ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Stop server:${RESET}     systemctl stop ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Restart server:${RESET}  systemctl restart ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Server status:${RESET}   systemctl status ${SERVICE_NAME}"
-    echo -e "  ${GREEN}View console:${RESET}    screen -r ${SCREEN_NAME}"
+    echo -e "  ${GREEN}Start server:${RESET}    docker start ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Stop server:${RESET}     docker stop ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Restart server:${RESET}  docker restart ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Server status:${RESET}   docker ps -f name=${CONTAINER_NAME}"
+    echo -e "  ${GREEN}View logs:${RESET}       docker logs -f ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Console access:${RESET}  docker attach ${CONTAINER_NAME}"
     echo ""
     echo -e "${BOLD}Configuration Files:${RESET}"
-    echo -e "  ${DIM}Server config:${RESET}   ${INSTALL_DIR}/game/csgo/cfg/server.cfg"
-    echo -e "  ${DIM}GSLT config:${RESET}     ${CONFIG_FILE}"
+    echo -e "  ${DIM}Server config:${RESET}   ${DATA_DIR}/game/csgo/cfg/server.cfg"
+    echo -e "  ${DIM}GSLT config:${RESET}     ${DATA_DIR}/cs2server.conf"
     echo ""
 
     if [[ -z "$STEAM_GSLT_TOKEN" ]]; then
         separator "-" 60
         echo ""
         echo -e "${YELLOW}IMPORTANT:${RESET} CS2 requires a GSLT to function properly."
-        echo -e "Add your GSLT to: ${CONFIG_FILE}"
+        echo -e "Add your GSLT to: ${DATA_DIR}/cs2server.conf"
         echo ""
-        echo "Then restart the service: systemctl restart ${SERVICE_NAME}"
+        echo "Then rebuild and restart:"
+        echo "  ${SCRIPT_DIR}/cs2-server-setup.sh"
     fi
 
-    separator "-" 60
-    echo ""
-    echo -e "${YELLOW}Firewall:${RESET} Open these ports if using a firewall:"
-    echo -e "  ufw allow ${GAME_PORT}/tcp"
-    echo -e "  ufw allow ${GAME_PORT}/udp"
-    echo -e "  ufw allow ${TV_PORT}/udp   # SourceTV"
-    echo ""
     separator "=" 60
     echo ""
 
-    log_to_file "COMPLETE" "${GAME_NAME} server setup finished successfully"
+    log_to_file "COMPLETE" "${GAME_NAME} Docker server setup finished successfully"
 }
 
 # =============================================================================
@@ -271,15 +330,14 @@ show_summary() {
 # =============================================================================
 
 main() {
-    log_header "${GAME_NAME} Server Setup"
-    log_to_file "START" "Beginning ${GAME_NAME} server installation"
+    log_header "${GAME_NAME} Server Setup (Docker)"
+    log_to_file "START" "Beginning ${GAME_NAME} Docker server installation"
 
     check_prerequisites
-    setup_steamcmd
-    download_game_files
+    setup_data_directory
     configure_steam_token
-    setup_systemd_service
-    start_service
+    build_image
+    run_container
     show_summary
 
     return 0

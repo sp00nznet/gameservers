@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Killing Floor 2 Dedicated Server Setup
-# Downloads, configures, and runs a KF2 server using SteamCMD
+# Killing Floor 2 Dedicated Server Setup (Docker)
+# Builds and runs a KF2 server in a Docker container
 #
 
 set -e
@@ -16,11 +16,10 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 
 # Server configuration
 readonly GAME_NAME="Killing Floor 2"
-readonly SERVICE_NAME="kf2server"
+readonly CONTAINER_NAME="kf2server"
+readonly IMAGE_NAME="gameservers/killingfloor2"
 readonly STEAM_APP_ID="232130"
-readonly INSTALL_DIR="/opt/kf2server"
-readonly WORKING_DIR="${INSTALL_DIR}"
-readonly SERVER_BINARY="${INSTALL_DIR}/Binaries/Win64/KFGameSteamServer.bin.x86_64"
+readonly INSTALL_DIR="/home/steam/kf2server"
 
 # Game server settings
 readonly DEFAULT_MAP="KF-BioticsLab"
@@ -28,131 +27,157 @@ readonly DIFFICULTY="Normal"
 readonly GAME_LENGTH="1"
 readonly MAX_PLAYERS="6"
 
-# Screen session name
-readonly SCREEN_NAME="${SERVICE_NAME}"
+# Network ports
+readonly GAME_PORT="7777"
+readonly QUERY_PORT="27015"
+readonly WEB_ADMIN_PORT="8080"
+
+# Data directory for persistent storage
+DATA_DIR=""
 
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
 
-# Validate prerequisites
 check_prerequisites() {
-    log_step 1 6 "Checking prerequisites..."
+    log_step 1 5 "Checking prerequisites..."
 
-    local deps=("curl" "tar" "screen" "systemctl")
-
-    if ! check_dependencies "${deps[@]}"; then
-        log_error "Missing dependencies. Please install them first."
+    if ! check_docker; then
+        log_error "Docker is required. Please install Docker first."
         exit 1
     fi
 
     log_success "All prerequisites satisfied"
 }
 
-# Install SteamCMD
-setup_steamcmd() {
-    log_step 2 6 "Setting up SteamCMD..."
+generate_dockerfile() {
+    cat << 'EOF'
+FROM debian:bookworm-slim
 
-    if ! install_steamcmd; then
-        log_error "Failed to install SteamCMD"
-        exit 1
-    fi
-}
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Download/update game files
-download_game_files() {
-    log_step 3 6 "Downloading ${GAME_NAME} server files..."
-    log_info "This may take a while for the initial download..."
+RUN dpkg --add-architecture i386 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        lib32gcc-s1 \
+        lib32stdc++6 \
+        locales \
+    && rm -rf /var/lib/apt/lists/* \
+    && locale-gen en_US.UTF-8
 
-    # Create install directory if needed
-    if [[ ! -d "$INSTALL_DIR" ]]; then
-        log_info "Creating install directory: ${INSTALL_DIR}"
-        mkdir -p "$INSTALL_DIR"
-    fi
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
 
-    if ! run_steamcmd "$INSTALL_DIR" "$STEAM_APP_ID"; then
-        log_error "Failed to download game files"
-        exit 1
-    fi
-}
+RUN useradd -m -s /bin/bash steam
+WORKDIR /home/steam
 
-# Generate systemd service file content
-generate_service_file() {
-    cat << EOF
-[Unit]
-Description=${GAME_NAME} Dedicated Server
-After=network.target
+RUN mkdir -p /home/steam/steamcmd && \
+    cd /home/steam/steamcmd && \
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
+    chown -R steam:steam /home/steam
 
-[Service]
-Type=forking
-User=root
-WorkingDirectory=${WORKING_DIR}
-ExecStart=/usr/bin/screen -dmS "${SCREEN_NAME}" ${SERVER_BINARY} ${DEFAULT_MAP}?Difficulty=${DIFFICULTY}?GameLength=${GAME_LENGTH}?MaxPlayers=${MAX_PLAYERS}
-ExecStop=/usr/bin/screen -S "${SCREEN_NAME}" -X quit
-Restart=on-failure
-RestartSec=10
+RUN mkdir -p /home/steam/kf2server && chown -R steam:steam /home/steam/kf2server
 
-[Install]
-WantedBy=multi-user.target
+USER steam
+
+RUN /home/steam/steamcmd/steamcmd.sh \
+    +force_install_dir /home/steam/kf2server \
+    +login anonymous \
+    +app_update 232130 validate \
+    +quit
+
+WORKDIR /home/steam/kf2server
+
+RUN chmod +x Binaries/Win64/KFGameSteamServer.bin.x86_64 2>/dev/null || true
+
+EXPOSE 7777/udp 27015/udp 8080/tcp 20560/udp
+
+ENTRYPOINT ["./Binaries/Win64/KFGameSteamServer.bin.x86_64"]
 EOF
 }
 
-# Create systemd service
-setup_systemd_service() {
-    log_step 4 6 "Creating systemd service..."
+build_image() {
+    log_step 2 5 "Building Docker image..."
+    log_info "This may take a while for the initial download..."
 
-    local service_content
-    service_content="$(generate_service_file)"
+    local dockerfile
+    dockerfile="$(generate_dockerfile)"
 
-    if ! create_systemd_service "$SERVICE_NAME" "$service_content"; then
-        log_error "Failed to create systemd service"
+    if ! build_docker_image "$IMAGE_NAME" "$dockerfile"; then
+        log_error "Failed to build Docker image"
         exit 1
     fi
 }
 
-# Enable and start the service
-start_service() {
-    log_step 5 6 "Enabling and starting service..."
+setup_data_directory() {
+    log_step 3 5 "Setting up data directory..."
 
-    if ! enable_service "$SERVICE_NAME"; then
-        log_error "Failed to start service"
-        exit 1
-    fi
+    DATA_DIR=$(create_game_data_dir "killingfloor2")
+    mkdir -p "${DATA_DIR}/KFGame/Config"
+    mkdir -p "${DATA_DIR}/KFGame/Cache"
+
+    log_success "Data directory ready: ${DATA_DIR}"
 }
 
-# Display completion summary
+run_container() {
+    log_step 4 5 "Starting Docker container..."
+
+    local port_mappings="-p ${GAME_PORT}:${GAME_PORT}/udp -p ${QUERY_PORT}:${QUERY_PORT}/udp -p ${WEB_ADMIN_PORT}:${WEB_ADMIN_PORT}/tcp -p 20560:20560/udp"
+    local volume_mappings="-v ${DATA_DIR}/KFGame:${INSTALL_DIR}/KFGame"
+    local extra_args="${DEFAULT_MAP}?Difficulty=${DIFFICULTY}?GameLength=${GAME_LENGTH}?MaxPlayers=${MAX_PLAYERS}"
+
+    if ! run_docker_container "$CONTAINER_NAME" "$IMAGE_NAME" "$port_mappings" "$volume_mappings" "$extra_args"; then
+        log_error "Failed to start container"
+        exit 1
+    fi
+
+    sleep 3
+    if container_is_running "$CONTAINER_NAME"; then
+        log_success "Container is running"
+    else
+        log_error "Container failed to start. Check logs with: docker logs ${CONTAINER_NAME}"
+        exit 1
+    fi
+
+    # Create systemd service for auto-start
+    create_docker_service "$CONTAINER_NAME" "${GAME_NAME} Dedicated Server"
+}
+
 show_summary() {
-    log_step 6 6 "Setup complete!"
+    log_step 5 5 "Setup complete!"
 
     echo ""
     separator "=" 60
-    echo ""
     echo -e "${BOLD}${GAME_NAME} Server Installation Summary${RESET}"
-    echo ""
     separator "-" 60
-    echo -e "  ${CYAN}Install Directory:${RESET}  ${INSTALL_DIR}"
-    echo -e "  ${CYAN}Service Name:${RESET}       ${SERVICE_NAME}"
+    echo -e "  ${CYAN}Container Name:${RESET}     ${CONTAINER_NAME}"
+    echo -e "  ${CYAN}Image Name:${RESET}         ${IMAGE_NAME}"
+    echo -e "  ${CYAN}Data Directory:${RESET}     ${DATA_DIR}"
     echo -e "  ${CYAN}Default Map:${RESET}        ${DEFAULT_MAP}"
     echo -e "  ${CYAN}Difficulty:${RESET}         ${DIFFICULTY}"
     echo -e "  ${CYAN}Game Length:${RESET}        ${GAME_LENGTH}"
     echo -e "  ${CYAN}Max Players:${RESET}        ${MAX_PLAYERS}"
     separator "-" 60
-    echo ""
-    echo -e "${BOLD}Useful Commands:${RESET}"
-    echo -e "  ${GREEN}Start server:${RESET}    systemctl start ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Stop server:${RESET}     systemctl stop ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Restart server:${RESET}  systemctl restart ${SERVICE_NAME}"
-    echo -e "  ${GREEN}Server status:${RESET}   systemctl status ${SERVICE_NAME}"
-    echo -e "  ${GREEN}View console:${RESET}    screen -r ${SCREEN_NAME}"
-    echo ""
+    echo -e "${BOLD}Network Ports:${RESET}"
+    echo -e "  ${CYAN}Game Port:${RESET}          ${GAME_PORT}/udp"
+    echo -e "  ${CYAN}Query Port:${RESET}         ${QUERY_PORT}/udp"
+    echo -e "  ${CYAN}Web Admin Port:${RESET}     ${WEB_ADMIN_PORT}/tcp"
+    separator "-" 60
     echo -e "${BOLD}Web Admin Interface:${RESET}"
-    echo -e "  Default port: ${YELLOW}8080${RESET}"
-    echo -e "  Configure in: ${DIM}${INSTALL_DIR}/KFGame/Config/KFWeb.ini${RESET}"
-    echo ""
+    echo -e "  Access at: ${YELLOW}http://localhost:${WEB_ADMIN_PORT}${RESET}"
+    echo -e "  Configure in: ${DIM}${DATA_DIR}/KFGame/Config/KFWeb.ini${RESET}"
+    separator "-" 60
+    echo -e "${BOLD}Useful Commands:${RESET}"
+    echo -e "  ${GREEN}Start server:${RESET}    docker start ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Stop server:${RESET}     docker stop ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}View logs:${RESET}       docker logs -f ${CONTAINER_NAME}"
+    echo -e "  ${GREEN}Console access:${RESET}  docker attach ${CONTAINER_NAME}"
     separator "=" 60
     echo ""
 
-    log_to_file "COMPLETE" "${GAME_NAME} server setup finished successfully"
+    log_to_file "COMPLETE" "${GAME_NAME} Docker server setup finished successfully"
 }
 
 # =============================================================================
@@ -160,18 +185,16 @@ show_summary() {
 # =============================================================================
 
 main() {
-    log_header "${GAME_NAME} Server Setup"
-    log_to_file "START" "Beginning ${GAME_NAME} server installation"
+    log_header "${GAME_NAME} Server Setup (Docker)"
+    log_to_file "START" "Beginning ${GAME_NAME} Docker server installation"
 
     check_prerequisites
-    setup_steamcmd
-    download_game_files
-    setup_systemd_service
-    start_service
+    setup_data_directory
+    build_image
+    run_container
     show_summary
 
     return 0
 }
 
-# Run main function
 main "$@"
