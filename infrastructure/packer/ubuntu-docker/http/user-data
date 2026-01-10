@@ -1,0 +1,53 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+
+  # Network configuration - DHCP by default
+  network:
+    network:
+      version: 2
+      ethernets:
+        eth0:
+          dhcp4: true
+
+  # Storage configuration - use entire disk
+  storage:
+    layout:
+      name: lvm
+      sizing-policy: all
+
+  # User configuration
+  identity:
+    hostname: ubuntu-docker
+    username: gameserver
+    # Password: gameserver (will be changed via cloud-init on deployment)
+    password: "$6$rounds=4096$randomsalt$A9FGqVb9GNpLxqjj8.wBqB7NONxoXlL8xUwE9TmWVuGqPxJbVwWpVLqUQwvX0YvHjKpLqNqNr7LlqbKpzXZdV."
+
+  # SSH configuration
+  ssh:
+    install-server: true
+    allow-pw: true
+
+  # Packages to install
+  packages:
+    - qemu-guest-agent
+    - cloud-init
+    - openssh-server
+    - curl
+    - wget
+    - vim
+    - htop
+    - net-tools
+
+  # Late commands to run after installation
+  late-commands:
+    - curtin in-target --target=/target -- systemctl enable qemu-guest-agent
+    - curtin in-target --target=/target -- systemctl enable ssh
+
+  # User data for first boot
+  user-data:
+    disable_root: false
+    timezone: UTC

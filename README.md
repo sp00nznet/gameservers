@@ -2,6 +2,23 @@
 
 A collection of automated setup scripts for deploying dedicated game servers on Linux. Each script handles the complete installation process including SteamCMD setup, game file downloads, systemd service configuration, and server startup.
 
+## Deployment Options
+
+This project supports two deployment methods:
+
+### 1. Single Host (Default)
+Run all game servers on a single Linux host using Docker containers, systemd services, or local VMs. Best for home servers or small deployments.
+
+### 2. Proxmox VE Cluster (Infrastructure-as-Code)
+Deploy game servers across multiple VMs on a Proxmox cluster using Terraform. Each game type gets its own dedicated VM for better isolation and scalability. See [Infrastructure README](infrastructure/README.md) for details.
+
+```
+infrastructure/
+├── packer/           # VM template builders (Ubuntu Docker, Windows Server)
+├── terraform/        # Proxmox VM deployment (per-game-type groupings)
+└── cloud-init/       # Automated VM provisioning
+```
+
 ## Supported Games
 
 | Game | Script | Steam App ID | Default Port |
@@ -100,6 +117,14 @@ gameservers/
 ├── README.md                     # This file
 ├── lib/
 │   └── common.sh                 # Shared functions and utilities
+├── infrastructure/               # Proxmox/Terraform deployment (optional)
+│   ├── packer/                   # VM template builders
+│   │   ├── ubuntu-docker/        # Ubuntu + Docker template
+│   │   └── windows-server/       # Windows Server template
+│   ├── terraform/                # Terraform configurations
+│   │   ├── modules/              # Reusable modules
+│   │   └── environments/         # Production/staging configs
+│   └── cloud-init/               # VM provisioning templates
 ├── abioticfactor/
 │   └── af-server-setup.sh        # Abiotic Factor
 ├── arkasa/

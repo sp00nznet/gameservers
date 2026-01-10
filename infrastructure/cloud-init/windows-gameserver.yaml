@@ -1,0 +1,23 @@
+#cloud-config
+# Cloud-init configuration for Windows game server VMs
+# Used for: City of Heroes and other Windows-only game servers
+# Note: This is for Cloudbase-Init on Windows, not standard cloud-init
+
+# Cloudbase-Init metadata format
+# This file should be converted to appropriate format for Windows
+
+# For Windows VMs, we primarily use userdata scripts
+# The main configuration is done via Cloudbase-Init
+
+# Network configuration (example)
+network:
+  version: 2
+  ethernets:
+    Ethernet:
+      dhcp4: true
+
+# Set hostname (processed by Cloudbase-Init)
+local-hostname: windows-gameserver
+
+# Userdata script for Windows (PowerShell)
+# This will be executed by Cloudbase-Init on first boot

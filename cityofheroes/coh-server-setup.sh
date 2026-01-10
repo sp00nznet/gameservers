@@ -3,10 +3,14 @@
 # City of Heroes (Ouroboros Volume 2) Dedicated Server Setup
 # Creates a Windows VM, downloads game files, and configures the server
 #
-# This script sets up a complete City of Heroes private server using:
-# - QEMU/KVM for Windows virtualization
-# - Windows Server Evaluation for the guest OS
-# - Ouroboros Volume 2 server files
+# This script supports two deployment methods:
+# 1. Proxmox/Terraform (recommended): Uses Terraform to deploy on Proxmox VE
+# 2. Local KVM (legacy): Uses QEMU/KVM with libvirt on the local machine
+#
+# The Terraform method is preferred for production deployments as it:
+# - Provides infrastructure-as-code management
+# - Integrates with the unified game server deployment system
+# - Supports cloud-init for automated VM provisioning
 #
 
 set -e
@@ -34,6 +38,9 @@ readonly VM_CPUS="4"
 readonly VM_DISK_SIZE="100G"    # 100GB for Windows + CoH files
 readonly VM_DISK="${VM_DIR}/${VM_NAME}.qcow2"
 
+# Terraform/Proxmox configuration
+readonly TERRAFORM_DIR="${SCRIPT_DIR}/../infrastructure/terraform/environments/production"
+
 # Windows ISO (Windows Server 2022 Evaluation)
 readonly WINDOWS_ISO_URL="https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x409&culture=en-us&country=US"
 readonly WINDOWS_ISO="${ISO_DIR}/windows_server_2022_eval.iso"
@@ -53,7 +60,314 @@ readonly COH_GAME_PORT="7000-7100"
 readonly COH_WEB_PORT="8080"
 
 # =============================================================================
-# FUNCTIONS
+# DEPLOYMENT METHOD SELECTION
+# =============================================================================
+
+# Detect available deployment methods
+detect_deployment_options() {
+    local options=()
+
+    # Check for Proxmox/Terraform
+    if command -v terraform &>/dev/null && [[ -d "$TERRAFORM_DIR" ]]; then
+        options+=("proxmox")
+    fi
+
+    # Check for local KVM
+    if grep -qE '(vmx|svm)' /proc/cpuinfo 2>/dev/null; then
+        options+=("local-kvm")
+    fi
+
+    echo "${options[@]}"
+}
+
+# Prompt user to select deployment method
+select_deployment_method() {
+    local options
+    options=($(detect_deployment_options))
+
+    if [[ ${#options[@]} -eq 0 ]]; then
+        log_error "No deployment methods available."
+        log_error "Either install Terraform for Proxmox deployment or enable CPU virtualization for local KVM."
+        exit 1
+    fi
+
+    echo ""
+    separator "-" 60
+    echo -e "${BOLD}Select Deployment Method${RESET}"
+    echo ""
+
+    local i=1
+    for opt in "${options[@]}"; do
+        case "$opt" in
+            proxmox)
+                echo "  $i) Proxmox/Terraform (recommended)"
+                echo "     Deploy to Proxmox VE cluster using Terraform"
+                echo "     Requires: Proxmox server, Terraform, pre-built Windows template"
+                ;;
+            local-kvm)
+                echo "  $i) Local KVM (legacy)"
+                echo "     Deploy directly to this machine using QEMU/KVM"
+                echo "     Requires: CPU virtualization, 16GB+ RAM, 150GB+ disk"
+                ;;
+        esac
+        echo ""
+        ((i++))
+    done
+
+    separator "-" 60
+    echo ""
+
+    local choice
+    echo -en "${CYAN}Select deployment method [1-${#options[@]}]: ${RESET}"
+    read -r choice
+
+    if [[ "$choice" -ge 1 && "$choice" -le ${#options[@]} ]]; then
+        echo "${options[$((choice-1))]}"
+    else
+        echo "${options[0]}"
+    fi
+}
+
+# =============================================================================
+# PROXMOX/TERRAFORM DEPLOYMENT
+# =============================================================================
+
+# Check Terraform prerequisites
+check_terraform_prerequisites() {
+    log_step 1 6 "Checking Terraform prerequisites..."
+
+    local deps=("terraform")
+
+    if ! check_dependencies "${deps[@]}"; then
+        log_error "Terraform is required for Proxmox deployment."
+        log_info "Install Terraform from: https://developer.hashicorp.com/terraform/downloads"
+        exit 1
+    fi
+
+    # Check if terraform config exists
+    if [[ ! -f "${TERRAFORM_DIR}/main.tf" ]]; then
+        log_error "Terraform configuration not found at: ${TERRAFORM_DIR}"
+        log_info "Please ensure the infrastructure/terraform directory is properly set up."
+        exit 1
+    fi
+
+    # Check if terraform is initialized
+    if [[ ! -d "${TERRAFORM_DIR}/.terraform" ]]; then
+        log_info "Initializing Terraform..."
+        (cd "$TERRAFORM_DIR" && terraform init)
+    fi
+
+    log_success "Terraform prerequisites check complete"
+}
+
+# Configure Terraform variables for CoH
+configure_terraform_coh() {
+    log_step 2 6 "Configuring Terraform for City of Heroes..."
+
+    local tfvars_file="${TERRAFORM_DIR}/terraform.tfvars"
+    local tfvars_example="${TERRAFORM_DIR}/terraform.tfvars.example"
+
+    if [[ ! -f "$tfvars_file" ]]; then
+        if [[ -f "$tfvars_example" ]]; then
+            log_warn "No terraform.tfvars found. Please configure Proxmox settings."
+            echo ""
+            separator "-" 60
+            echo -e "${YELLOW}Terraform Configuration Required${RESET}"
+            echo ""
+            echo "1. Copy the example configuration:"
+            echo "   cp ${tfvars_example} ${tfvars_file}"
+            echo ""
+            echo "2. Edit the file and configure:"
+            echo "   - Proxmox API URL and credentials"
+            echo "   - Network settings (gateway, DNS, IPs)"
+            echo "   - SSH keys for access"
+            echo ""
+            echo "3. Run this script again"
+            separator "-" 60
+            echo ""
+            exit 1
+        else
+            log_error "No Terraform configuration found."
+            exit 1
+        fi
+    fi
+
+    log_success "Terraform configuration found"
+}
+
+# Build Windows template with Packer (if needed)
+check_windows_template() {
+    log_step 3 6 "Checking Windows template availability..."
+
+    echo ""
+    separator "-" 60
+    echo -e "${YELLOW}Windows Template Verification${RESET}"
+    echo ""
+    echo "The Terraform deployment requires a pre-built Windows template."
+    echo ""
+    echo "If you haven't created the template yet:"
+    echo "  1. Navigate to: infrastructure/packer/windows-server/"
+    echo "  2. Copy variables.pkrvars.hcl.example to variables.pkrvars.hcl"
+    echo "  3. Configure the variables for your Proxmox server"
+    echo "  4. Run: packer build -var-file=variables.pkrvars.hcl windows-server.pkr.hcl"
+    echo ""
+    echo "The template ID should be configured in your terraform.tfvars"
+    separator "-" 60
+    echo ""
+
+    echo -en "${CYAN}Is the Windows template ready in Proxmox? [y/N]: ${RESET}"
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        log_info "Please build the Windows template first using Packer."
+        log_info "See: infrastructure/packer/windows-server/README.md"
+        exit 0
+    fi
+
+    log_success "Windows template confirmed"
+}
+
+# Deploy CoH VM using Terraform
+deploy_terraform_coh() {
+    log_step 4 6 "Deploying City of Heroes VM with Terraform..."
+
+    cd "$TERRAFORM_DIR"
+
+    # Show the plan first
+    log_info "Generating Terraform plan..."
+    terraform plan -target=module.windows_servers -out=coh.tfplan
+
+    echo ""
+    echo -en "${CYAN}Apply this plan to deploy CoH VM? [y/N]: ${RESET}"
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        log_info "Deployment cancelled."
+        exit 0
+    fi
+
+    # Apply the configuration
+    log_info "Deploying VM (this may take a few minutes)..."
+    terraform apply coh.tfplan
+
+    # Get the VM IP
+    local coh_ip
+    coh_ip=$(terraform output -json windows_servers 2>/dev/null | jq -r '.["coh-01"].ip // empty')
+
+    if [[ -n "$coh_ip" ]]; then
+        log_success "City of Heroes VM deployed at: ${coh_ip}"
+    else
+        log_warn "VM deployed but IP not available yet. Check Proxmox console."
+    fi
+
+    rm -f coh.tfplan
+    cd - > /dev/null
+
+    log_success "Terraform deployment complete"
+}
+
+# Show Terraform post-deployment instructions
+show_terraform_instructions() {
+    log_step 5 6 "Post-deployment configuration..."
+
+    local coh_ip
+    coh_ip=$(cd "$TERRAFORM_DIR" && terraform output -json windows_servers 2>/dev/null | jq -r '.["coh-01"].ip // "Check Proxmox"')
+
+    echo ""
+    separator "=" 60
+    echo ""
+    echo -e "${BOLD}City of Heroes VM Deployed via Terraform${RESET}"
+    echo ""
+    separator "-" 60
+    echo ""
+    echo -e "${CYAN}VM Access:${RESET}"
+    echo "  IP Address: ${coh_ip}"
+    echo "  RDP Port:   3389"
+    echo "  Username:   Administrator"
+    echo "  Password:   (as configured in cloud-init)"
+    echo ""
+    separator "-" 60
+    echo ""
+    echo -e "${BOLD}Next Steps - In the Windows VM:${RESET}"
+    echo ""
+    echo "1. Connect via Remote Desktop to: ${coh_ip}"
+    echo ""
+    echo "2. Download CoH Server Files:"
+    echo "   - Visit: https://wiki.ourodev.com/Volume_2_VMs_%26_Self_Installer"
+    echo "   - Download the Ouroboros self-installer"
+    echo "   - Extract to C:\\GameServers\\CityOfHeroes"
+    echo ""
+    echo "3. Run the Installer Batch Files:"
+    echo "   - '1 - install apps.bat' - Install prerequisites"
+    echo "   - '2 - Setup DB.bat' - Create database"
+    echo "   - '3 - Firewall rules.bat' - Configure firewall (as admin)"
+    echo "   - '4 - Start Server.bat' - Launch the server"
+    echo ""
+    echo "4. Create Admin Account:"
+    echo "   - Run COHDBTool10.exe"
+    echo "   - Create account with access level 10"
+    echo ""
+    separator "-" 60
+    echo ""
+    echo -e "${BOLD}Terraform Management Commands:${RESET}"
+    echo "  Show status:    cd ${TERRAFORM_DIR} && terraform show"
+    echo "  Destroy VM:     cd ${TERRAFORM_DIR} && terraform destroy -target=module.windows_servers"
+    echo "  View outputs:   cd ${TERRAFORM_DIR} && terraform output"
+    echo ""
+    separator "=" 60
+    echo ""
+}
+
+# Create monitoring integration for Terraform-deployed VM
+create_terraform_monitoring() {
+    log_step 6 6 "Setting up monitoring integration..."
+
+    # Create a monitoring script for the Terraform-deployed VM
+    mkdir -p "${INSTALL_DIR}"
+
+    cat > "${INSTALL_DIR}/check-coh-status.sh" << 'EOF'
+#!/bin/bash
+# City of Heroes VM Status Checker
+# Checks the status of the Terraform-deployed CoH VM
+
+TERRAFORM_DIR="${1:-/home/user/gameservers/infrastructure/terraform/environments/production}"
+
+if command -v terraform &>/dev/null && [[ -d "$TERRAFORM_DIR" ]]; then
+    cd "$TERRAFORM_DIR"
+    VM_INFO=$(terraform output -json windows_servers 2>/dev/null | jq -r '.["coh-01"] // empty')
+    if [[ -n "$VM_INFO" ]]; then
+        echo "City of Heroes VM Status:"
+        echo "  Name: coh-01"
+        echo "  IP: $(echo "$VM_INFO" | jq -r '.ip // "Unknown"')"
+        echo "  Node: $(echo "$VM_INFO" | jq -r '.node // "Unknown"')"
+        echo "  VMID: $(echo "$VM_INFO" | jq -r '.vmid // "Unknown"')"
+    else
+        echo "City of Heroes VM: Not found in Terraform state"
+    fi
+else
+    echo "City of Heroes VM: Terraform not available"
+fi
+EOF
+
+    chmod +x "${INSTALL_DIR}/check-coh-status.sh"
+
+    log_success "Monitoring integration created"
+}
+
+# Main Terraform deployment flow
+deploy_via_terraform() {
+    log_header "City of Heroes - Proxmox/Terraform Deployment"
+
+    check_terraform_prerequisites
+    configure_terraform_coh
+    check_windows_template
+    deploy_terraform_coh
+    show_terraform_instructions
+    create_terraform_monitoring
+
+    log_to_file "COMPLETE" "City of Heroes VM deployed via Terraform"
+}
+
+# =============================================================================
+# LOCAL KVM DEPLOYMENT (Legacy)
 # =============================================================================
 
 # Validate prerequisites
@@ -494,6 +808,23 @@ show_summary() {
     log_to_file "COMPLETE" "${GAME_NAME} server setup finished successfully"
 }
 
+# Main local KVM deployment flow
+deploy_via_local_kvm() {
+    log_header "City of Heroes - Local KVM Deployment"
+
+    check_prerequisites
+    install_virtualization
+    create_directories
+    download_windows_iso
+    download_virtio_drivers
+    download_coh_files
+    create_windows_vm
+    setup_shared_folder
+    show_coh_install_instructions
+    create_vm_service
+    show_summary
+}
+
 # =============================================================================
 # MAIN
 # =============================================================================
@@ -508,12 +839,17 @@ main() {
     echo ""
     separator "-" 60
     echo ""
-    echo "This setup will:"
-    echo "  1. Install QEMU/KVM virtualization"
-    echo "  2. Download Windows Server Evaluation ISO"
-    echo "  3. Create a Windows VM"
-    echo "  4. Download CoH server files"
-    echo "  5. Set up file sharing for easy transfer"
+    echo "This setup supports two deployment methods:"
+    echo ""
+    echo "  1. Proxmox/Terraform (recommended)"
+    echo "     - Deploy to a Proxmox VE cluster"
+    echo "     - Infrastructure-as-code management"
+    echo "     - Integrates with unified game server system"
+    echo ""
+    echo "  2. Local KVM (legacy)"
+    echo "     - Run directly on this machine"
+    echo "     - Uses QEMU/KVM with libvirt"
+    echo "     - Good for single-server setups"
     echo ""
     separator "-" 60
     echo ""
@@ -525,17 +861,22 @@ main() {
         exit 0
     fi
 
-    check_prerequisites
-    install_virtualization
-    create_directories
-    download_windows_iso
-    download_virtio_drivers
-    download_coh_files
-    create_windows_vm
-    setup_shared_folder
-    show_coh_install_instructions
-    create_vm_service
-    show_summary
+    # Select and execute deployment method
+    local deployment_method
+    deployment_method=$(select_deployment_method)
+
+    case "$deployment_method" in
+        proxmox)
+            deploy_via_terraform
+            ;;
+        local-kvm)
+            deploy_via_local_kvm
+            ;;
+        *)
+            log_error "Unknown deployment method: ${deployment_method}"
+            exit 1
+            ;;
+    esac
 
     return 0
 }

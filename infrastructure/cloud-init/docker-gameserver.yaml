@@ -1,0 +1,150 @@
+#cloud-config
+# Cloud-init configuration for Docker-based game server VMs
+# Used for: Counter-Strike, TF2, Project Zomboid, and other SteamCMD servers
+
+# Set hostname (will be overridden by Terraform)
+hostname: docker-gameserver
+manage_etc_hosts: true
+
+# Configure timezone
+timezone: UTC
+
+# Create gameserver user
+users:
+  - name: gameserver
+    groups: [docker, sudo]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    # Password: gameserver (change in production)
+    passwd: $6$rounds=4096$randomsalt$A9FGqVb9GNpLxqjj8.wBqB7NONxoXlL8xUwE9TmWVuGqPxJbVwWpVLqUQwvX0YvHjKpLqNqNr7LlqbKpzXZdV.
+    ssh_authorized_keys: []
+
+# Package management
+package_update: true
+package_upgrade: true
+packages:
+  - docker.io
+  - docker-compose
+  - htop
+  - tmux
+  - screen
+  - curl
+  - wget
+  - unzip
+  - lib32gcc-s1
+  - lib32stdc++6
+  - net-tools
+  - iptables-persistent
+  - qemu-guest-agent
+
+# Write files
+write_files:
+  # Docker daemon configuration
+  - path: /etc/docker/daemon.json
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "10m",
+          "max-file": "3"
+        },
+        "storage-driver": "overlay2"
+      }
+    permissions: '0644'
+    owner: root:root
+
+  # SteamCMD update script
+  - path: /opt/scripts/update-steamcmd.sh
+    content: |
+      #!/bin/bash
+      # Update SteamCMD installation
+      cd /opt/steamcmd
+      ./steamcmd.sh +quit
+    permissions: '0755'
+    owner: root:root
+
+  # Game server management script
+  - path: /opt/scripts/manage-gameserver.sh
+    content: |
+      #!/bin/bash
+      # Game server container management script
+
+      CONTAINER_NAME="${1:-gameserver}"
+      ACTION="${2:-status}"
+
+      case "$ACTION" in
+        start)
+          docker start "$CONTAINER_NAME"
+          ;;
+        stop)
+          docker stop "$CONTAINER_NAME"
+          ;;
+        restart)
+          docker restart "$CONTAINER_NAME"
+          ;;
+        logs)
+          docker logs -f "$CONTAINER_NAME"
+          ;;
+        status)
+          docker ps -a --filter "name=$CONTAINER_NAME"
+          ;;
+        *)
+          echo "Usage: $0 <container-name> {start|stop|restart|logs|status}"
+          exit 1
+          ;;
+      esac
+    permissions: '0755'
+    owner: root:root
+
+  # Systemd service template for game containers
+  - path: /etc/systemd/system/gameserver@.service
+    content: |
+      [Unit]
+      Description=Game Server Container %i
+      Requires=docker.service
+      After=docker.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/usr/bin/docker start %i
+      ExecStop=/usr/bin/docker stop %i
+
+      [Install]
+      WantedBy=multi-user.target
+    permissions: '0644'
+    owner: root:root
+
+# Run commands
+runcmd:
+  # Enable and start services
+  - systemctl enable docker
+  - systemctl start docker
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+
+  # Add gameserver user to docker group
+  - usermod -aG docker gameserver
+
+  # Create directory structure
+  - mkdir -p /opt/gameservers
+  - mkdir -p /opt/steamcmd
+  - mkdir -p /opt/scripts
+  - mkdir -p /var/log/gameservers
+  - chown -R gameserver:gameserver /opt/gameservers /opt/steamcmd /var/log/gameservers
+
+  # Install SteamCMD
+  - |
+    cd /opt/steamcmd
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -
+    chown -R gameserver:gameserver /opt/steamcmd
+
+  # Reload systemd
+  - systemctl daemon-reload
+
+  # Signal cloud-init completion
+  - touch /var/lib/cloud/instance/boot-finished
+
+# Final message
+final_message: "Docker game server VM is ready. Boot time: $UPTIME seconds."

@@ -1,0 +1,28 @@
+# Example variables file for Ubuntu Docker Packer build
+# Copy this file to variables.pkrvars.hcl and fill in your values
+
+# Proxmox connection settings
+proxmox_url      = "https://proxmox.example.com:8006/api2/json"
+proxmox_username = "root@pam"
+proxmox_password = "your-proxmox-password"
+proxmox_node     = "pve"
+
+# Storage settings
+proxmox_storage     = "local-lvm"
+proxmox_iso_storage = "local"
+
+# VM template settings
+vm_id   = 9000
+vm_name = "ubuntu-docker-template"
+
+# Ubuntu ISO (must be uploaded to Proxmox ISO storage)
+ubuntu_iso = "ubuntu-22.04.3-live-server-amd64.iso"
+
+# VM resources
+vm_cores     = 2
+vm_memory    = 4096
+vm_disk_size = "32G"
+
+# SSH credentials for provisioning
+ssh_username = "gameserver"
+ssh_password = "gameserver"

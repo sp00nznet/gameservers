@@ -1,0 +1,84 @@
+# Example Terraform Variables for Production Game Servers
+# Copy this file to terraform.tfvars and fill in your values
+
+# ============================================================================
+# Proxmox Connection Settings
+# ============================================================================
+
+# Proxmox API URL
+proxmox_api_url = "https://proxmox.example.com:8006/api2/json"
+
+# API Token (create via Datacenter > Permissions > API Tokens)
+# Format: user@realm!token-name
+proxmox_api_token_id     = "root@pam!terraform"
+proxmox_api_token_secret = "your-api-token-secret-here"
+
+# Skip TLS verification (set to false in production with valid certs)
+proxmox_tls_insecure = true
+
+# Proxmox node name
+proxmox_node = "pve"
+
+# ============================================================================
+# Storage Settings
+# ============================================================================
+
+# Storage pool for VM disks (check available pools in Proxmox)
+storage_pool = "local-lvm"
+
+# ============================================================================
+# Network Settings
+# ============================================================================
+
+# Network bridge (check available bridges in Proxmox)
+network_bridge = "vmbr0"
+
+# VLAN tag for game servers (null for untagged)
+game_vlan_tag = null
+
+# Default gateway
+gateway = "192.168.1.1"
+
+# DNS servers
+dns_servers = ["8.8.8.8", "1.1.1.1"]
+
+# ============================================================================
+# SSH Settings
+# ============================================================================
+
+# SSH username (used for all Linux VMs)
+ssh_user = "gameserver"
+
+# SSH password (optional - use ssh_public_keys for better security)
+ssh_password = "change-this-password"
+
+# SSH public keys (one per line)
+ssh_public_keys = <<-EOT
+  ssh-ed25519 AAAAC3NzaC1... your-ssh-key@example.com
+EOT
+
+# ============================================================================
+# Server IP Addresses
+# Use CIDR notation (e.g., 192.168.1.100/24) or null for DHCP
+# ============================================================================
+
+# Source Engine servers (CS, TF2, etc.)
+source_engine_ip = "192.168.1.100/24"
+
+# Survival games (Project Zomboid, etc.)
+survival_ip = "192.168.1.101/24"
+
+# Classic games (UT, Killing Floor, etc.)
+classic_ip = "192.168.1.102/24"
+
+# ARK: Survival Ascended
+ark_ip = "192.168.1.103/24"
+
+# World of Warcraft (AzerothCore)
+wow_ip = "192.168.1.104/24"
+
+# Star Wars Galaxies Emulator
+swgemu_ip = "192.168.1.105/24"
+
+# City of Heroes (Windows VM)
+coh_ip = "192.168.1.106/24"
