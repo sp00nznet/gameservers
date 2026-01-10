@@ -1,0 +1,175 @@
+#cloud-config
+# Cloud-init configuration for Proton/Wine-based game server VMs
+# Used for: ARK: Survival Ascended and other Windows games running via Proton
+
+# Set hostname (will be overridden by Terraform)
+hostname: proton-gameserver
+manage_etc_hosts: true
+
+# Configure timezone
+timezone: UTC
+
+# Create gameserver user
+users:
+  - name: gameserver
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    passwd: $6$rounds=4096$randomsalt$A9FGqVb9GNpLxqjj8.wBqB7NONxoXlL8xUwE9TmWVuGqPxJbVwWpVLqUQwvX0YvHjKpLqNqNr7LlqbKpzXZdV.
+    ssh_authorized_keys: []
+
+# Package management
+package_update: true
+package_upgrade: true
+packages:
+  # Core utilities
+  - htop
+  - tmux
+  - screen
+  - curl
+  - wget
+  - unzip
+  - net-tools
+  - qemu-guest-agent
+  # 32-bit libraries for Steam/Proton
+  - lib32gcc-s1
+  - lib32stdc++6
+  - libc6:i386
+  - libncurses5:i386
+  - libstdc++6:i386
+  # Wine dependencies
+  - libfreetype6:i386
+  - libx11-6:i386
+  - libxext6:i386
+  - libxcursor1:i386
+  - libxrandr2:i386
+  - libxi6:i386
+  - libxfixes3:i386
+  - libgl1:i386
+  # Vulkan support (for some Proton games)
+  - mesa-vulkan-drivers
+  - libvulkan1
+  - vulkan-tools
+
+# Write files
+write_files:
+  # Proton environment setup script
+  - path: /opt/scripts/setup-proton.sh
+    content: |
+      #!/bin/bash
+      # Download and setup Proton GE
+
+      PROTON_VERSION="${1:-GE-Proton8-25}"
+      PROTON_DIR="/opt/proton"
+
+      mkdir -p "$PROTON_DIR"
+      cd "$PROTON_DIR"
+
+      # Download Proton GE
+      if [ ! -d "$PROTON_DIR/$PROTON_VERSION" ]; then
+        echo "Downloading Proton $PROTON_VERSION..."
+        wget -q "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/$PROTON_VERSION/$PROTON_VERSION.tar.gz"
+        tar -xzf "$PROTON_VERSION.tar.gz"
+        rm -f "$PROTON_VERSION.tar.gz"
+        echo "Proton $PROTON_VERSION installed to $PROTON_DIR/$PROTON_VERSION"
+      else
+        echo "Proton $PROTON_VERSION already installed"
+      fi
+    permissions: '0755'
+    owner: root:root
+
+  # Proton game server launcher template
+  - path: /opt/scripts/launch-proton-server.sh
+    content: |
+      #!/bin/bash
+      # Launch a game server using Proton
+
+      PROTON_VERSION="${PROTON_VERSION:-GE-Proton8-25}"
+      PROTON_DIR="/opt/proton/$PROTON_VERSION"
+      STEAM_COMPAT_DATA="${STEAM_COMPAT_DATA:-/opt/gameservers/steamcompat}"
+      GAME_DIR="${GAME_DIR:-/opt/gameservers/game}"
+      GAME_EXE="${GAME_EXE:-server.exe}"
+      GAME_ARGS="${GAME_ARGS:-}"
+
+      # Create compatibility data directory
+      mkdir -p "$STEAM_COMPAT_DATA"
+
+      # Set Proton environment
+      export STEAM_COMPAT_CLIENT_INSTALL_PATH="/opt/steamcmd"
+      export STEAM_COMPAT_DATA_PATH="$STEAM_COMPAT_DATA"
+
+      # Launch the server
+      cd "$GAME_DIR"
+      exec "$PROTON_DIR/proton" run "$GAME_EXE" $GAME_ARGS
+    permissions: '0755'
+    owner: root:root
+
+  # Systemd service template for Proton servers
+  - path: /etc/systemd/system/proton-gameserver@.service
+    content: |
+      [Unit]
+      Description=Proton Game Server %i
+      After=network.target
+
+      [Service]
+      Type=simple
+      User=gameserver
+      WorkingDirectory=/opt/gameservers/%i
+      EnvironmentFile=/opt/gameservers/%i/server.env
+      ExecStart=/usr/bin/screen -DmS %i /opt/scripts/launch-proton-server.sh
+      ExecStop=/usr/bin/screen -S %i -X quit
+      Restart=on-failure
+      RestartSec=30
+
+      [Install]
+      WantedBy=multi-user.target
+    permissions: '0644'
+    owner: root:root
+
+  # Example environment file for ARK server
+  - path: /opt/gameservers/ark/server.env.example
+    content: |
+      PROTON_VERSION=GE-Proton8-25
+      STEAM_COMPAT_DATA=/opt/gameservers/ark/steamcompat
+      GAME_DIR=/opt/gameservers/ark/ShooterGame/Binaries/Win64
+      GAME_EXE=ArkAscendedServer.exe
+      GAME_ARGS=TheIsland_WP?listen?SessionName=MyARKServer?Port=7777?QueryPort=27015 -NoBattlEye -log -server
+    permissions: '0644'
+    owner: root:root
+
+# Run commands
+runcmd:
+  # Enable multiarch for 32-bit support
+  - dpkg --add-architecture i386
+  - apt-get update
+
+  # Enable services
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+
+  # Create directory structure
+  - mkdir -p /opt/gameservers
+  - mkdir -p /opt/steamcmd
+  - mkdir -p /opt/proton
+  - mkdir -p /opt/scripts
+  - mkdir -p /var/log/gameservers
+  - chown -R gameserver:gameserver /opt/gameservers /opt/steamcmd /opt/proton /var/log/gameservers
+
+  # Install SteamCMD
+  - |
+    cd /opt/steamcmd
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -
+    chown -R gameserver:gameserver /opt/steamcmd
+
+  # Setup default Proton version
+  - sudo -u gameserver /opt/scripts/setup-proton.sh GE-Proton8-25
+
+  # Reload systemd
+  - systemctl daemon-reload
+
+  # Signal cloud-init completion
+  - touch /var/lib/cloud/instance/boot-finished
+
+# Final message
+final_message: "Proton game server VM is ready. Boot time: $UPTIME seconds."

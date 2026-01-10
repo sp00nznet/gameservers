@@ -1,0 +1,247 @@
+#cloud-config
+# Cloud-init configuration for compiled game server VMs
+# Used for: AzerothCore (WoW), SWGEmu, and other servers requiring compilation
+
+# Set hostname (will be overridden by Terraform)
+hostname: compiled-gameserver
+manage_etc_hosts: true
+
+# Configure timezone
+timezone: UTC
+
+# Create gameserver user
+users:
+  - name: gameserver
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    passwd: $6$rounds=4096$randomsalt$A9FGqVb9GNpLxqjj8.wBqB7NONxoXlL8xUwE9TmWVuGqPxJbVwWpVLqUQwvX0YvHjKpLqNqNr7LlqbKpzXZdV.
+    ssh_authorized_keys: []
+
+# Package management
+package_update: true
+package_upgrade: true
+packages:
+  # Core utilities
+  - htop
+  - tmux
+  - screen
+  - curl
+  - wget
+  - unzip
+  - git
+  - net-tools
+  - qemu-guest-agent
+  # Build tools
+  - build-essential
+  - gcc
+  - g++
+  - clang
+  - cmake
+  - ninja-build
+  - autoconf
+  - automake
+  - libtool
+  # Database
+  - mariadb-server
+  - mariadb-client
+  - libmariadb-dev
+  - libmariadb-dev-compat
+  # Libraries
+  - libssl-dev
+  - libboost-all-dev
+  - liblua5.3-dev
+  - libreadline-dev
+  - libncurses-dev
+  - libbz2-dev
+  - libmysql++-dev
+  - zlib1g-dev
+  # Optional
+  - ccache
+  - p7zip-full
+
+# Write files
+write_files:
+  # MariaDB configuration for game servers
+  - path: /etc/mysql/mariadb.conf.d/99-gameserver.cnf
+    content: |
+      [mysqld]
+      # Game server optimizations
+      max_connections = 500
+      max_allowed_packet = 64M
+      innodb_buffer_pool_size = 1G
+      innodb_log_file_size = 256M
+      innodb_flush_log_at_trx_commit = 2
+      query_cache_type = 1
+      query_cache_size = 64M
+      skip-name-resolve
+    permissions: '0644'
+    owner: root:root
+
+  # Database setup script
+  - path: /opt/scripts/setup-database.sh
+    content: |
+      #!/bin/bash
+      # Setup game server databases
+
+      DB_NAME="${1:-gameserver}"
+      DB_USER="${2:-gameserver}"
+      DB_PASS="${3:-gameserver}"
+
+      mysql -u root << EOF
+      CREATE DATABASE IF NOT EXISTS ${DB_NAME}_auth;
+      CREATE DATABASE IF NOT EXISTS ${DB_NAME}_world;
+      CREATE DATABASE IF NOT EXISTS ${DB_NAME}_characters;
+
+      CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
+      CREATE USER IF NOT EXISTS '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}';
+
+      GRANT ALL PRIVILEGES ON ${DB_NAME}_auth.* TO '${DB_USER}'@'localhost';
+      GRANT ALL PRIVILEGES ON ${DB_NAME}_auth.* TO '${DB_USER}'@'127.0.0.1';
+      GRANT ALL PRIVILEGES ON ${DB_NAME}_world.* TO '${DB_USER}'@'localhost';
+      GRANT ALL PRIVILEGES ON ${DB_NAME}_world.* TO '${DB_USER}'@'127.0.0.1';
+      GRANT ALL PRIVILEGES ON ${DB_NAME}_characters.* TO '${DB_USER}'@'localhost';
+      GRANT ALL PRIVILEGES ON ${DB_NAME}_characters.* TO '${DB_USER}'@'127.0.0.1';
+
+      FLUSH PRIVILEGES;
+      EOF
+
+      echo "Databases created for $DB_NAME"
+    permissions: '0755'
+    owner: root:root
+
+  # Build script for AzerothCore
+  - path: /opt/scripts/build-azerothcore.sh
+    content: |
+      #!/bin/bash
+      # Build AzerothCore WoW server
+
+      INSTALL_DIR="/opt/azerothcore"
+      SOURCE_DIR="$INSTALL_DIR/source"
+      BUILD_DIR="$INSTALL_DIR/build"
+      SERVER_DIR="$INSTALL_DIR/server"
+
+      mkdir -p "$SOURCE_DIR" "$BUILD_DIR" "$SERVER_DIR"
+
+      # Clone or update source
+      if [ ! -d "$SOURCE_DIR/.git" ]; then
+        git clone https://github.com/azerothcore/azerothcore-wotlk.git "$SOURCE_DIR"
+      else
+        cd "$SOURCE_DIR" && git pull
+      fi
+
+      # Build
+      cd "$BUILD_DIR"
+      cmake "$SOURCE_DIR" \
+        -DCMAKE_INSTALL_PREFIX="$SERVER_DIR" \
+        -DCMAKE_C_COMPILER=/usr/bin/clang \
+        -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+        -DWITH_WARNINGS=1 \
+        -DTOOLS_BUILD=all \
+        -DSCRIPTS=static \
+        -GNinja
+
+      ninja -j$(nproc)
+      ninja install
+
+      echo "AzerothCore built and installed to $SERVER_DIR"
+    permissions: '0755'
+    owner: root:root
+
+  # Build script for SWGEmu
+  - path: /opt/scripts/build-swgemu.sh
+    content: |
+      #!/bin/bash
+      # Build SWGEmu Core3 server
+
+      INSTALL_DIR="/opt/swgemu"
+      SOURCE_DIR="$INSTALL_DIR/Core3"
+      BUILD_DIR="$INSTALL_DIR/Core3/build"
+
+      mkdir -p "$INSTALL_DIR"
+
+      # Clone or update source
+      if [ ! -d "$SOURCE_DIR/.git" ]; then
+        git clone https://github.com/swgemu/Core3.git "$SOURCE_DIR"
+      else
+        cd "$SOURCE_DIR" && git pull
+      fi
+
+      # Build
+      mkdir -p "$BUILD_DIR"
+      cd "$BUILD_DIR"
+
+      cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_C_COMPILER=/usr/bin/clang \
+        -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+        -GNinja
+
+      ninja -j$(nproc)
+
+      echo "SWGEmu built in $BUILD_DIR"
+    permissions: '0755'
+    owner: root:root
+
+  # Systemd service template for compiled servers
+  - path: /etc/systemd/system/gameserver@.service
+    content: |
+      [Unit]
+      Description=Game Server %i
+      After=network.target mariadb.service
+      Requires=mariadb.service
+
+      [Service]
+      Type=simple
+      User=gameserver
+      WorkingDirectory=/opt/%i/server
+      ExecStart=/usr/bin/screen -DmS %i /opt/%i/server/bin/%i
+      ExecStop=/usr/bin/screen -S %i -X quit
+      Restart=on-failure
+      RestartSec=30
+
+      [Install]
+      WantedBy=multi-user.target
+    permissions: '0644'
+    owner: root:root
+
+# Run commands
+runcmd:
+  # Enable services
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+  - systemctl enable mariadb
+  - systemctl start mariadb
+
+  # Secure MariaDB installation
+  - |
+    mysql -u root << EOF
+    DELETE FROM mysql.user WHERE User='';
+    DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+    DROP DATABASE IF EXISTS test;
+    DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+    FLUSH PRIVILEGES;
+    EOF
+
+  # Create directory structure
+  - mkdir -p /opt/azerothcore
+  - mkdir -p /opt/swgemu
+  - mkdir -p /opt/scripts
+  - mkdir -p /var/log/gameservers
+  - chown -R gameserver:gameserver /opt/azerothcore /opt/swgemu /var/log/gameservers
+
+  # Setup ccache for faster rebuilds
+  - |
+    mkdir -p /home/gameserver/.ccache
+    echo 'max_size = 5G' > /home/gameserver/.ccache/ccache.conf
+    chown -R gameserver:gameserver /home/gameserver/.ccache
+
+  # Reload systemd
+  - systemctl daemon-reload
+
+  # Signal cloud-init completion
+  - touch /var/lib/cloud/instance/boot-finished
+
+# Final message
+final_message: "Compiled game server VM is ready. Boot time: $UPTIME seconds."

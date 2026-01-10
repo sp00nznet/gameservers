@@ -1,0 +1,31 @@
+# Example variables file for Windows Server Packer build
+# Copy this file to variables.pkrvars.hcl and fill in your values
+
+# Proxmox connection settings
+proxmox_url      = "https://proxmox.example.com:8006/api2/json"
+proxmox_username = "root@pam"
+proxmox_password = "your-proxmox-password"
+proxmox_node     = "pve"
+
+# Storage settings
+proxmox_storage     = "local-lvm"
+proxmox_iso_storage = "local"
+
+# VM template settings
+vm_id   = 9001
+vm_name = "windows-server-template"
+
+# Windows ISO files (must be uploaded to Proxmox ISO storage)
+# Download Windows Server 2022 Evaluation from Microsoft
+windows_iso = "SERVER_EVAL_x64FRE_en-us.iso"
+# Download VirtIO drivers from: https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/
+virtio_iso  = "virtio-win.iso"
+
+# VM resources (Windows Server requires more resources)
+vm_cores     = 4
+vm_memory    = 8192
+vm_disk_size = "100G"
+
+# WinRM credentials for provisioning (will be changed via cloud-init on deployment)
+winrm_username = "Administrator"
+winrm_password = "GameServer2024!"

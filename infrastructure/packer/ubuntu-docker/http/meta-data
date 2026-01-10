@@ -1,0 +1,4 @@
+# Meta-data for cloud-init autoinstall
+# This file can be empty but must exist
+instance-id: ubuntu-docker-template
+local-hostname: ubuntu-docker
