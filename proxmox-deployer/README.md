@@ -184,7 +184,16 @@ cd proxmox-deployer
 ./start.sh docker
 ```
 
-Access at: **http://localhost:5000**
+### Option 4: Windows (Docker)
+```powershell
+# PowerShell (recommended)
+.\start.ps1
+
+# Or double-click
+start.bat
+```
+
+Access at: **http://localhost:5555**
 
 ---
 
@@ -203,10 +212,47 @@ Access at: **http://localhost:5000**
 
 ---
 
+## Windows Users
+
+The deployer runs on Windows using Docker Desktop. No Python installation required.
+
+### Quick Start (Windows)
+
+1. **Install Docker Desktop** from [docker.com](https://www.docker.com/products/docker-desktop)
+2. **Start Docker Desktop** and wait for it to be ready
+3. **Double-click `start.bat`** or run `.\start.ps1` in PowerShell
+4. **Access the deployer** at http://localhost:5555
+
+### PowerShell Options
+
+```powershell
+# Standard launch
+.\start.ps1
+
+# Force rebuild
+.\start.ps1 -Rebuild
+
+# Skip browser prompt
+.\start.ps1 -NoBrowser
+```
+
+### Stopping the Deployer
+
+```powershell
+# PowerShell
+.\stop.ps1
+
+# Or double-click
+stop.bat
+```
+
+---
+
 ## Requirements
 
 ### For the Deployer
-- Python 3.8+ (native) or Docker
+- **Linux/macOS**: Python 3.8+ (native) or Docker
+- **Windows**: Docker Desktop
 - Network access to Proxmox API (port 8006)
 
 ### For Proxmox
@@ -271,7 +317,8 @@ proxmox-deployer/
 │   ├── models.py            # Database models
 │   ├── routes.py            # Web routes & API
 │   ├── proxmox_client.py    # Proxmox VE API client
-│   ├── game_servers.py      # 75+ game definitions
+│   ├── game_servers.py      # 130+ game definitions
+│   ├── install_scripts.py   # Post-deploy provisioning
 │   ├── static/              # CSS, JS, images
 │   └── templates/           # Jinja2 HTML templates
 ├── run.py                   # Application entry
@@ -279,8 +326,11 @@ proxmox-deployer/
 ├── requirements.txt         # Dependencies
 ├── Dockerfile               # Container build
 ├── docker-compose.yml       # Docker setup
-├── start.sh                 # Start script
-└── stop.sh                  # Stop script
+├── start.sh                 # Linux start script
+├── start.bat                # Windows batch launcher
+├── start.ps1                # Windows PowerShell launcher
+├── stop.bat                 # Windows stop script
+└── stop.ps1                 # Windows PowerShell stop
 ```
 
 ---
