@@ -1,11 +1,15 @@
 # Silverware Game Servers
 
-![Games](https://img.shields.io/badge/Games-75+-brightgreen)
-![Categories](https://img.shields.io/badge/Categories-11-blue)
+![Games](https://img.shields.io/badge/Games-130+-brightgreen)
+![Categories](https://img.shields.io/badge/Categories-14-blue)
 ![Proxmox](https://img.shields.io/badge/Proxmox-7.x%20%7C%208.x-orange)
+![LinuxGSM](https://img.shields.io/badge/LinuxGSM-139%20games-informational)
+![AMP](https://img.shields.io/badge/AMP-200%2B%20games-informational)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-A complete game server deployment platform featuring **75+ dedicated game servers** with one-click deployment to Proxmox VE. Deploy LXC containers or full VMs for any game with a modern web interface.
+A complete game server deployment platform featuring **130+ dedicated game servers** with one-click deployment to Proxmox VE. Deploy LXC containers or full VMs for any game with a modern web interface.
+
+**Powered by [LinuxGSM](https://linuxgsm.com/) (139 games) and [AMP CubeCoders](https://cubecoders.com/AMP) (200+ games) integrations.**
 
 ---
 
@@ -21,109 +25,180 @@ The web deployer is the recommended approach - it gives you a dark-themed dashbo
 
 ---
 
-## Supported Games (75+)
+## Supported Games (130+)
 
-### Source Engine (11 games)
+This platform supports **130+ game servers** directly, with access to **139 games via LinuxGSM** and **200+ games via AMP CubeCoders**. Games marked with 🟢 have LinuxGSM support, 🔵 have AMP support.
+
+### Source Engine (16 games)
 The classics that started it all. All use SteamCMD for installation.
 
-| Game | Steam App ID | Default Port |
-|------|--------------|--------------|
-| Counter-Strike 2 | 730 | 27015 |
-| Counter-Strike 1.6 | 90 | 27015 |
-| Counter-Strike: Source | 232330 | 27015 |
-| Team Fortress 2 | 232250 | 27015 |
-| Team Fortress Classic | 90 | 27015 |
-| Garry's Mod | 4020 | 27015 |
-| Left 4 Dead 2 | 222860 | 27015 |
-| Half-Life Deathmatch | 90 | 27015 |
-| Half-Life 2: Deathmatch | 232370 | 27015 |
-| Black Mesa | 346680 | 27015 |
-| Sven Co-op | 276060 | 27015 |
+| Game | Steam App ID | Default Port | Integration |
+|------|--------------|--------------|-------------|
+| Counter-Strike 2 | 730 | 27015 | 🟢 LinuxGSM |
+| Counter-Strike 1.6 | 90 | 27015 | 🟢 LinuxGSM |
+| Counter-Strike: Source | 232330 | 27015 | 🟢 LinuxGSM |
+| Team Fortress 2 | 232250 | 27015 | 🟢 LinuxGSM |
+| Team Fortress Classic | 90 | 27015 | 🟢 LinuxGSM |
+| Garry's Mod | 4020 | 27015 | 🟢 LinuxGSM |
+| Left 4 Dead 2 | 222860 | 27015 | 🟢 LinuxGSM |
+| Half-Life Deathmatch | 90 | 27015 | 🟢 LinuxGSM |
+| Half-Life 2: Deathmatch | 232370 | 27015 | 🟢 LinuxGSM |
+| Black Mesa | 346680 | 27015 | 🟢 LinuxGSM |
+| Sven Co-op | 276060 | 27015 | 🟢 LinuxGSM |
+| Day of Defeat | 30 | 27015 | 🟢 LinuxGSM |
+| Day of Defeat: Source | 232290 | 27015 | 🟢 LinuxGSM |
+| Fistful of Frags | 295230 | 27015 | 🟢 LinuxGSM |
+| Synergy | 17520 | 27015 | 🟢 LinuxGSM |
 
-### Survival Games (18 games)
+### Survival Games (30+ games)
 The most popular category - survival crafting games with dedicated servers.
 
-| Game | Steam App ID | Default Port | Notes |
-|------|--------------|--------------|-------|
-| Valheim | 896660 | 2456-2458 | Viking survival, very popular |
-| Rust | 258550 | 28015 | Hardcore survival PvP |
-| 7 Days to Die | 294420 | 26900 | Zombie survival crafting |
-| Project Zomboid | 380870 | 16261-16262 | Isometric zombie survival |
-| Palworld | 2394010 | 8211 | Pokemon-like survival |
-| Enshrouded | 2278520 | 15636-15637 | Action RPG survival |
-| V Rising | 1604030 | 9876-9877 | Vampire survival |
-| Conan Exiles | 443030 | 7777 | Brutal survival |
-| ARK: Survival Ascended | 2430930 | 7777 | Dinosaur survival (UE5) |
-| ARK: Survival Evolved | 376030 | 7777 | Original dinosaur survival |
-| Don't Starve Together | 343050 | 10999-11000 | Co-op survival |
-| Abiotic Factor | 427410 | 7777 | Sci-fi survival |
-| Sons of the Forest | 2465200 | 8766 | Horror survival sequel |
-| The Forest | 556450 | 8766 | Original horror survival |
-| Barotrauma | 1026340 | 27015 | Submarine survival |
-| SCUM | 3792580 | 7042 | Open world survival |
-| Core Keeper | 1963720 | 27015 | Underground mining survival |
-| Icarus | 2089300 | 17777 | Sci-fi survival |
+| Game | Steam App ID | Default Port | Integration |
+|------|--------------|--------------|-------------|
+| Valheim | 896660 | 2456-2458 | 🟢 LinuxGSM |
+| Rust | 258550 | 28015 | 🟢 LinuxGSM |
+| 7 Days to Die | 294420 | 26900 | 🟢 LinuxGSM |
+| Project Zomboid | 380870 | 16261-16262 | 🟢 LinuxGSM |
+| Palworld | 2394010 | 8211 | 🟢 LinuxGSM |
+| Enshrouded | 2278520 | 15636-15637 | 🔵 AMP |
+| V Rising | 1604030 | 9876-9877 | 🔵 AMP |
+| Conan Exiles | 443030 | 7777 | 🔵 AMP |
+| ARK: Survival Ascended | 2430930 | 7777 | 🔵 AMP |
+| ARK: Survival Evolved | 376030 | 7777 | 🟢 LinuxGSM |
+| Don't Starve Together | 343050 | 10999-11000 | 🟢 LinuxGSM |
+| Sons of the Forest | 2465200 | 8766 | 🔵 AMP |
+| The Forest | 556450 | 8766 | 🔵 AMP |
+| Barotrauma | 1026340 | 27015 | 🟢 LinuxGSM |
+| SCUM | 3792580 | 7042 | 🔵 AMP |
+| Core Keeper | 1963720 | 27015 | 🟢 LinuxGSM |
+| Icarus | 2089300 | 17777 | 🔵 AMP |
+| Eco | 382310 | 3000 | 🟢 LinuxGSM |
+| The Isle | 412680 | 7777 | 🟢 LinuxGSM |
+| Hurtworld | 405100 | 12871 | 🟢 LinuxGSM |
+| Vintage Story | - | 42420 | 🟢 LinuxGSM |
+| Craftopia | 1307550 | 6587 | 🟢 LinuxGSM |
+| Empyrion | 530870 | 30000 | 🔵 AMP |
+| CryoFall | 829590 | 6000 | 🔵 AMP |
+| Longvinter | 1628750 | 7777 | 🔵 AMP |
+| Nightingale | 1928980 | 7777 | 🔵 AMP |
+| The Front | 2285150 | 25010 | 🟢 LinuxGSM |
+| Myth of Empires | 1371580 | 12888 | 🔵 AMP |
+| Last Oasis | 920720 | 5555 | 🔵 AMP |
+| No One Survived | 1963370 | 7777 | 🔵 AMP |
 
-### Military Simulation (7 games)
+### Military Simulation (10 games)
 Tactical shooters and milsim games with dedicated server support.
 
-| Game | Steam App ID | Default Port | Notes |
-|------|--------------|--------------|-------|
-| DayZ | 223350 | 2302 | Post-apocalyptic survival |
-| ARMA 3 | 233780 | 2302 | Military simulator |
-| Arma Reforger | 1874900 | 2001 | Next-gen ARMA |
-| Squad | 403240 | 7787 | 50v50 tactical shooter |
-| Hell Let Loose | 1348460 | 7777 | WW2 platoon combat |
-| Insurgency: Sandstorm | 581330 | 27102 | Modern tactical FPS |
-| Post Scriptum | 736220 | 10027 | WW2 milsim |
+| Game | Steam App ID | Default Port | Integration |
+|------|--------------|--------------|-------------|
+| DayZ | 223350 | 2302 | 🟢 LinuxGSM |
+| ARMA 3 | 233780 | 2302 | 🟢 LinuxGSM |
+| Arma Reforger | 1874900 | 2001 | 🟢 LinuxGSM |
+| Squad | 403240 | 7787 | 🟢 LinuxGSM |
+| Squad 44 (Post Scriptum) | 746200 | 10027 | 🟢 LinuxGSM |
+| Hell Let Loose | 1348460 | 7777 | 🔵 AMP |
+| Insurgency: Sandstorm | 581330 | 27102 | 🟢 LinuxGSM |
+| Insurgency | 237410 | 27015 | 🟢 LinuxGSM |
+| Day of Infamy | 462310 | 27015 | 🟢 LinuxGSM |
 
-### Sandbox & Building (9 games)
+### Sandbox & Building (15 games)
 Creative and building-focused games.
 
-| Game | Steam App ID | Default Port | Notes |
-|------|--------------|--------------|-------|
-| Minecraft Java | N/A | 25565 | The original |
-| Minecraft Bedrock | N/A | 19132 | Cross-platform edition |
-| Terraria | 105600 | 7777 | 2D sandbox adventure |
-| Starbound | 211820 | 21025 | Space exploration |
-| Factorio | 427520 | 34197 | Factory building |
-| Satisfactory | 1690800 | 7777 | 3D factory building |
-| Space Engineers | 298740 | 27016 | Space sandbox |
-| Stationeers | 544550 | 27500 | Space station sim |
-| Avorion | 565060 | 27000 | Space sandbox building |
+| Game | Steam App ID | Default Port | Integration |
+|------|--------------|--------------|-------------|
+| Minecraft Java | N/A | 25565 | 🟢 LinuxGSM |
+| Minecraft Bedrock | N/A | 19132 | 🟢 LinuxGSM |
+| Terraria | 105600 | 7777 | 🟢 LinuxGSM |
+| Starbound | 211820 | 21025 | 🟢 LinuxGSM |
+| Factorio | 427520 | 34197 | 🟢 LinuxGSM |
+| Satisfactory | 1690800 | 7777 | 🟢 LinuxGSM |
+| Space Engineers | 298740 | 27016 | 🔵 AMP |
+| Stationeers | 544550 | 27500 | 🟢 LinuxGSM |
+| Avorion | 565060 | 27000 | 🟢 LinuxGSM |
+| Colony Survival | 366090 | 27016 | 🟢 LinuxGSM |
+| Rising World | 324080 | 4255 | 🟢 LinuxGSM |
+| Wurm Unlimited | 366220 | 3724 | 🟢 LinuxGSM |
+| Astroneer | 728470 | 8777 | 🔵 AMP |
+| OpenTTD | 1536610 | 3979 | 🔵 AMP |
+| Minetest | N/A | 30000 | 🔵 AMP |
 
-### Racing & Simulation (4 games)
+### Racing & Simulation (5 games)
 Racing simulators with dedicated server support.
 
-| Game | Steam App ID | Default Port | Notes |
-|------|--------------|--------------|-------|
-| Assetto Corsa | 302550 | 9600 | Racing simulator |
-| Assetto Corsa Competizione | 805550 | 9231 | GT racing |
-| Euro Truck Simulator 2 | 227300 | 27015 | Trucking convoy |
-| American Truck Simulator | 270880 | 27015 | US trucking |
+| Game | Steam App ID | Default Port | Integration |
+|------|--------------|--------------|-------------|
+| Assetto Corsa | 302550 | 9600 | 🔵 AMP |
+| Assetto Corsa Competizione | 805550 | 9231 | 🔵 AMP |
+| Euro Truck Simulator 2 | 227300 | 27015 | 🟢 LinuxGSM |
+| American Truck Simulator | 270880 | 27015 | 🟢 LinuxGSM |
+| BeamMP (BeamNG.drive) | N/A | 30814 | 🔵 AMP |
 
-### Roleplay (3 games)
+### Arena & Competitive (12 games)
+Classic arena shooters and competitive games.
+
+| Game | Steam App ID | Default Port | Integration |
+|------|--------------|--------------|-------------|
+| Quake III Arena | N/A | 27960 | 🟢 LinuxGSM |
+| Quake 2 | N/A | 27910 | 🟢 LinuxGSM |
+| Quake Live | 349090 | 27960 | 🟢 LinuxGSM |
+| Xonotic | N/A | 26000 | 🟢 LinuxGSM |
+| Unreal Tournament 99 | N/A | 7777 | 🟢 LinuxGSM |
+| Unreal Tournament 2004 | N/A | 7777 | 🟢 LinuxGSM |
+| Unreal Tournament 3 | N/A | 7777 | 🟢 LinuxGSM |
+| Chivalry: Medieval Warfare | 220070 | 7777 | 🟢 LinuxGSM |
+| MORDHAU | 629800 | 7777 | 🟢 LinuxGSM |
+| Pavlov VR | 622970 | 7777 | 🟢 LinuxGSM |
+| Teeworlds | N/A | 8303 | 🟢 LinuxGSM |
+| Soldat | N/A | 23073 | 🟢 LinuxGSM |
+
+### Co-op & Multiplayer (8 games)
+Co-operative and social multiplayer games.
+
+| Game | Steam App ID | Default Port | Integration |
+|------|--------------|--------------|-------------|
+| No More Room in Hell | 317670 | 27015 | 🟢 LinuxGSM |
+| Natural Selection 2 | 4940 | 27015 | 🟢 LinuxGSM |
+| SCP: Secret Laboratory | 996560 | 7777 | 🟢 LinuxGSM |
+| Tower Unite | 439660 | 27015 | 🟢 LinuxGSM |
+| Risk of Rain 2 | 1180760 | 27015 | 🔵 AMP |
+| Rimworld Together | N/A | 25555 | 🔵 AMP |
+| Path of Titans | N/A | 7777 | 🔵 AMP |
+| Mindustry | 1127400 | 6567 | 🔵 AMP |
+
+### Roleplay (6 games)
 GTA and Red Dead multiplayer frameworks.
 
-| Game | Port | Notes |
-|------|------|-------|
-| FiveM (GTA V) | 30120 | Most popular GTA RP platform |
-| alt:V (GTA V) | 7788 | Alternative GTA multiplayer |
-| RedM (Red Dead) | 30120 | Red Dead Redemption 2 RP |
+| Game | Port | Integration |
+|------|------|-------------|
+| FiveM (GTA V) | 30120 | 🔵 AMP |
+| alt:V (GTA V) | 7788 | 🔵 AMP |
+| RedM (Red Dead) | 30120 | 🔵 AMP |
+| Multi Theft Auto | 22003 | 🟢 LinuxGSM |
+| RAGE:MP (GTA V) | 22005 | 🔵 AMP |
+| SA-MP | 7777 | 🟢 LinuxGSM |
 
-### Classic Games (8 games)
+### Classic Games (15 games)
 Older titles that still have active communities.
 
-| Game | Steam App ID | Default Port |
-|------|--------------|--------------|
-| Killing Floor | 215360 | 7707 |
-| Killing Floor 2 | 232130 | 7777 |
-| Unreal Tournament 99 | N/A | 7777 |
-| Unreal Tournament 2004 | N/A | 7777 |
-| SA-MP (GTA San Andreas) | N/A | 7777 |
-| Quake III Arena | N/A | 27960 |
-| Quake Live | 349090 | 27960 |
-| Unturned | 304930 | 27015 |
+| Game | Steam App ID | Default Port | Integration |
+|------|--------------|--------------|-------------|
+| Killing Floor | 215360 | 7707 | 🟢 LinuxGSM |
+| Killing Floor 2 | 232130 | 7777 | 🟢 LinuxGSM |
+| Call of Duty 4: MW | N/A | 28960 | 🟢 LinuxGSM |
+| Call of Duty 2 | N/A | 28960 | 🟢 LinuxGSM |
+| Call of Duty: World at War | N/A | 28960 | 🟢 LinuxGSM |
+| Battlefield 1942 | N/A | 14567 | 🟢 LinuxGSM |
+| Battlefield: Vietnam | N/A | 15567 | 🟢 LinuxGSM |
+| Return to Castle Wolfenstein | N/A | 27960 | 🟢 LinuxGSM |
+| Wolfenstein: Enemy Territory | N/A | 27960 | 🟢 LinuxGSM |
+| Unturned | 304930 | 27015 | 🟢 LinuxGSM |
+
+### Voice & Communication (1 app)
+Voice servers for gaming communities.
+
+| App | Ports | Integration |
+|-----|-------|-------------|
+| TeamSpeak 3 | 9987, 10011, 30033 | 🟢 LinuxGSM |
 
 ### RPG & Tabletop (2 games)
 Virtual tabletop and RPG servers.
@@ -155,18 +230,24 @@ Games that require Windows or Proton to run.
 ### Server Management Panels (4 tools)
 Tools to manage multiple game servers.
 
-| Panel | Port | Notes |
-|-------|------|-------|
-| Pterodactyl | 80/443 | Industry standard panel |
-| Crafty Controller | 8443 | Python-based, Minecraft focus |
-| AMP (CubeCoders) | 8080 | Commercial, 200+ games |
-| LinuxGSM | N/A | CLI-based, 130+ games |
+| Panel | Port | Supported Games |
+|-------|------|-----------------|
+| [LinuxGSM](https://linuxgsm.com/) | N/A | **139 games** - CLI-based, open source |
+| [AMP (CubeCoders)](https://cubecoders.com/AMP) | 8080 | **200+ games** - Web UI, commercial |
+| [Pterodactyl](https://pterodactyl.io/) | 80/443 | **200+ eggs** - Web UI, open source |
+| [Crafty Controller](https://craftycontrol.com/) | 8443 | Minecraft focus, Python-based |
 
 ---
 
 ## Web Deployer Features
 
 The Proxmox web deployer (`proxmox-deployer/`) is a Flask application that provides:
+
+### LinuxGSM & AMP Integration
+- **LinuxGSM support**: Deploy any of 139 games using [LinuxGSM](https://linuxgsm.com/) scripts
+- **AMP templates**: Use [CubeCoders AMP](https://cubecoders.com/AMP) configurations for 200+ games
+- **Automatic setup**: The deployer installs and configures LinuxGSM or Docker containers automatically
+- **Pre-configured servers**: 130+ games have ready-to-deploy configurations with optimal settings
 
 ### One-Click Deployment
 - Select a game from the library
