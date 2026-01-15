@@ -4,112 +4,83 @@ Detailed configuration options for each supported game server.
 
 ## Table of Contents
 
-- [ARK: Survival Ascended](#ark-survival-ascended)
-- [Black Mesa](#black-mesa)
-- [City of Heroes](#city-of-heroes)
-- [Counter-Strike](#counter-strike)
+### Source Engine
+- [Counter-Strike 1.6](#counter-strike-16)
 - [Counter-Strike 2](#counter-strike-2)
-- [Half-Life Deathmatch](#half-life-deathmatch)
-- [Half-Life 2: Deathmatch](#half-life-2-deathmatch)
-- [Killing Floor](#killing-floor)
-- [Killing Floor 2](#killing-floor-2)
-- [Project Zomboid](#project-zomboid)
 - [Team Fortress 2](#team-fortress-2)
 - [Team Fortress Classic](#team-fortress-classic)
-- [Synergy](#synergy)
+- [Half-Life Deathmatch](#half-life-deathmatch)
+- [Half-Life 2: Deathmatch](#half-life-2-deathmatch)
+- [Black Mesa](#black-mesa)
 - [Sven Co-op](#sven-co-op)
+- [Synergy](#synergy)
+- [Garry's Mod](#garrys-mod)
+- [Left 4 Dead 2](#left-4-dead-2)
+
+### Survival Games
+- [Valheim](#valheim)
+- [Rust](#rust)
+- [7 Days to Die](#7-days-to-die)
+- [Project Zomboid](#project-zomboid)
+- [Palworld](#palworld)
+- [Enshrouded](#enshrouded)
+- [V Rising](#v-rising)
+- [Conan Exiles](#conan-exiles)
+- [ARK: Survival Ascended](#ark-survival-ascended)
 - [Abiotic Factor](#abiotic-factor)
 - [HumanitZ](#humanitz)
-- [San Andreas Multiplayer](#san-andreas-multiplayer)
+- [Don't Starve Together](#dont-starve-together)
+
+### Sandbox & Building
+- [Minecraft Java](#minecraft-java)
+- [Minecraft Bedrock](#minecraft-bedrock)
+- [Terraria](#terraria)
 - [Starbound](#starbound)
+- [Factorio](#factorio)
+- [Satisfactory](#satisfactory)
+
+### Classic Games
+- [Killing Floor](#killing-floor)
+- [Killing Floor 2](#killing-floor-2)
 - [Unreal Tournament 99](#unreal-tournament-99)
 - [Unreal Tournament 2004](#unreal-tournament-2004)
+- [San Andreas Multiplayer](#san-andreas-multiplayer)
+- [Quake III Arena](#quake-iii-arena)
+
+### MMO Emulators
+- [World of Warcraft (AzerothCore)](#world-of-warcraft-azerothcore)
 - [Star Wars Galaxies EMU](#star-wars-galaxies-emu)
-- [World of Warcraft](#world-of-warcraft-azerothcore)
+- [City of Heroes](#city-of-heroes)
+
+### Server Management
+- [Pterodactyl Panel](#pterodactyl-panel)
+- [Crafty Controller](#crafty-controller)
+- [Foundry VTT](#foundry-vtt)
 
 ---
 
-## ARK: Survival Ascended
+## Source Engine Games
 
-| Setting | Value |
-|---------|-------|
-| Config Location | `/opt/arkserver/ShooterGame/Saved/Config/WindowsServer/` |
-| Main Config | `GameUserSettings.ini` |
-| Game Rules | `Game.ini` |
-| Default Map | TheIsland_WP |
-| Max Players | 70 |
-
-**Available Maps:**
-- `TheIsland_WP`, `ScorchedEarth_WP`, `Aberration_WP`
-- `TheCenter_WP`, `Ragnarok_WP`, `Extinction_WP`
-
-**Adding Mods:**
-```bash
-# Edit the setup script
-sudo nano /home/user/gameservers/arkasa/ark-server-setup.sh
-# Find: MODS=""
-# Change to: MODS="928793,900062"
-```
-
----
-
-## Black Mesa
-
-| Setting | Value |
-|---------|-------|
-| Config Location | `/opt/bmserver/bms/cfg/server.cfg` |
-| GSLT Config | `/opt/bmserver/bmserver.conf` |
-| Default Map | dm_bounce |
-| Max Players | 16 |
-
-**Available Maps:**
-`dm_bounce`, `dm_chopper`, `dm_crossfire`, `dm_gasworks`, `dm_lambdabunker`, `dm_power`, `dm_rail`, `dm_stack`, `dm_stalkyard`, `dm_subtransit`, `dm_undertow`
-
----
-
-## City of Heroes
-
-| Setting | Value |
-|---------|-------|
-| Type | Windows VM (QEMU/KVM or Proxmox) |
-| VM Location | `/opt/cohserver/vm/` |
-| Shared Files | `/opt/cohserver/shared/` |
-| Auth Port | 2104 |
-| DB Port | 2105 |
-| Game Ports | 7000-7100 |
-| RAM Required | 8GB min, 32GB recommended |
-
-**VM Management:**
-```bash
-virsh start coh-windows-server
-virsh shutdown coh-windows-server
-virt-manager  # GUI
-```
-
-**Resources:**
-- [OuroDev Wiki](https://wiki.ourodev.com/)
-- [Server Setup Guide](https://wiki.ourodev.com/Volume_2_Server_Setup)
-
----
-
-## Counter-Strike
+### Counter-Strike 1.6
 
 | Setting | Value |
 |---------|-------|
 | Config Location | `/opt/csserver/cstrike/server.cfg` |
 | Default Map | de_dust2 |
-| Max Players | 20 |
+| Max Players | 32 |
+| Port | 27015 (UDP/TCP) |
 
 ---
 
-## Counter-Strike 2
+### Counter-Strike 2
 
 | Setting | Value |
 |---------|-------|
 | Config Location | `/opt/cs2server/game/csgo/cfg/server.cfg` |
 | GSLT Config | `/opt/cs2server/cs2server.conf` |
 | Default Map | de_dust2 |
-| Max Players | 20 |
+| Max Players | 16 |
+| Port | 27015 (UDP/TCP) |
 
 **Game Modes:**
 | Mode | game_type | game_mode |
@@ -122,17 +93,41 @@ virt-manager  # GUI
 
 ---
 
-## Half-Life Deathmatch
+### Team Fortress 2
+
+| Setting | Value |
+|---------|-------|
+| Config Location | `/opt/tf2server/tf/cfg/server.cfg` |
+| GSLT Config | `/opt/tf2server/tf2server.conf` |
+| Default Map | ctf_2fort |
+| Max Players | 24 |
+| Port | 27015 (UDP/TCP) |
+
+---
+
+### Team Fortress Classic
+
+| Setting | Value |
+|---------|-------|
+| Config Location | `/opt/tfcserver/tfc/server.cfg` |
+| Default Map | 2fort |
+| Max Players | 24 |
+| Port | 27015 (UDP/TCP) |
+
+---
+
+### Half-Life Deathmatch
 
 | Setting | Value |
 |---------|-------|
 | Config Location | `/opt/hldmserver/valve/server.cfg` |
 | Default Map | crossfire |
 | Max Players | 16 |
+| Port | 27015 (UDP/TCP) |
 
 ---
 
-## Half-Life 2: Deathmatch
+### Half-Life 2: Deathmatch
 
 | Setting | Value |
 |---------|-------|
@@ -140,31 +135,117 @@ virt-manager  # GUI
 | GSLT Config | `/opt/hl2dmserver/hl2dmserver.conf` |
 | Default Map | dm_lockdown |
 | Max Players | 16 |
+| Port | 27015 (UDP/TCP) |
 
 ---
 
-## Killing Floor
+### Black Mesa
 
 | Setting | Value |
 |---------|-------|
-| Config Location | `/opt/kf1server/System/` |
-| Default Map | KF-WestLondon.rom |
-| Max Players | 6 |
+| Config Location | `/opt/bmserver/bms/cfg/server.cfg` |
+| GSLT Config | `/opt/bmserver/bmserver.conf` |
+| Default Map | dm_bounce |
+| Max Players | 16 |
+| Port | 27015 (UDP/TCP) |
+
+**Available Maps:**
+`dm_bounce`, `dm_chopper`, `dm_crossfire`, `dm_gasworks`, `dm_lambdabunker`, `dm_power`, `dm_rail`, `dm_stack`, `dm_stalkyard`, `dm_subtransit`, `dm_undertow`
 
 ---
 
-## Killing Floor 2
+### Sven Co-op
 
 | Setting | Value |
 |---------|-------|
-| Config Location | `/opt/kf2server/KFGame/Config/` |
-| Web Admin | Port 8080 |
-| Default Map | KF-BioticsLab |
-| Max Players | 6 |
+| Config Location | `/opt/svencoopserver/svencoop/server.cfg` |
+| Default Map | svencoop1 |
+| Max Players | 12 |
+| Port | 27015 (UDP/TCP) |
 
 ---
 
-## Project Zomboid
+### Synergy
+
+| Setting | Value |
+|---------|-------|
+| Config Location | `/opt/synergyserver/synergy/cfg/server.cfg` |
+| Default Map | d1_trainstation_01 |
+| Max Players | 8 |
+| Port | 27015 (UDP/TCP) |
+
+---
+
+### Garry's Mod
+
+| Setting | Value |
+|---------|-------|
+| Config Location | `/opt/gmodserver/garrysmod/cfg/server.cfg` |
+| GSLT Required | Yes |
+| Default Map | gm_construct |
+| Max Players | 24 |
+| Ports | 27015, 27005 (UDP/TCP) |
+
+**Game Modes:** sandbox, terrortown, prophunt, darkrp, murder
+
+---
+
+### Left 4 Dead 2
+
+| Setting | Value |
+|---------|-------|
+| Config Location | `/opt/l4d2server/left4dead2/cfg/server.cfg` |
+| Default Map | c1m1_hotel |
+| Max Players | 8 |
+| Port | 27015 (UDP/TCP) |
+
+---
+
+## Survival Games
+
+### Valheim
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `lloesche/valheim-server` |
+| Default World | Dedicated |
+| Max Players | 10 |
+| Ports | 2456-2458 (UDP) |
+| Password Required | Yes (min 5 chars) |
+
+**Environment Variables:**
+```bash
+SERVER_NAME="My Valheim Server"
+SERVER_PASSWORD="mypassword"
+WORLD_NAME="Dedicated"
+SERVER_PUBLIC=0
+```
+
+---
+
+### Rust
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `didstopia/rust-server` |
+| World Size | 3500 (default) |
+| Max Players | 50 |
+| Ports | 28015 (UDP), 28016 (TCP), 28082 (TCP) |
+
+---
+
+### 7 Days to Die
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `vinanrra/7dtd-server` |
+| Difficulty | 0-5 (default: 2) |
+| Max Players | 8 |
+| Ports | 26900-26902 (UDP/TCP) |
+
+---
+
+### Project Zomboid
 
 | Setting | Value |
 |---------|-------|
@@ -173,166 +254,260 @@ virt-manager  # GUI
 | Sandbox Settings | `pzserver_SandboxVars.lua` |
 | Default Map | Muldraugh, KY |
 | Max Players | 16 |
+| Ports | 16261-16262 (UDP) |
 
-**Important:** Change default passwords after installation:
-```bash
-sudo nano /home/pzuser/Zomboid/Server/pzserver.ini
-```
+**Important:** Change default passwords after installation.
 
 ---
 
-## Team Fortress 2
+### Palworld
 
 | Setting | Value |
 |---------|-------|
-| Config Location | `/opt/tf2server/tf/cfg/server.cfg` |
-| GSLT Config | `/opt/tf2server/tf2server.conf` |
-| Default Map | ctf_2fort |
-| Max Players | 24 |
-
-**Making Server Public:**
-```bash
-sudo nano /opt/tf2server/tf2server.conf
-# Add: STEAM_GSLT_TOKEN="your_token_here"
-sudo systemctl restart tf2server
-```
+| Docker Image | `thijsvanloef/palworld-server-docker` |
+| Max Players | 32 |
+| Ports | 8211 (UDP), 27015 (UDP) |
 
 ---
 
-## Team Fortress Classic
+### Enshrouded
 
 | Setting | Value |
 |---------|-------|
-| Config Location | `/opt/tfcserver/tfc/server.cfg` |
-| Default Map | 2fort |
-| Max Players | 24 |
+| Docker Image | `sknnr/enshrouded-dedicated-server` |
+| Max Players | 16 |
+| Ports | 15636-15637 (UDP) |
 
 ---
 
-## Synergy
+### V Rising
 
 | Setting | Value |
 |---------|-------|
-| Config Location | `/opt/synergyserver/synergy/cfg/server.cfg` |
-| Default Map | d1_trainstation_01 |
-| Max Players | 8 |
+| Docker Image | `trueosiris/vrising` |
+| Max Players | 40 |
+| Ports | 9876-9877 (UDP) |
+| Game Presets | StandardPvP, StandardPvE, HardcorePvP |
 
 ---
 
-## Sven Co-op
+### Conan Exiles
 
 | Setting | Value |
 |---------|-------|
-| Config Location | `/opt/svencoopserver/svencoop/server.cfg` |
-| Default Map | svencoop1 |
-| Max Players | 12 |
+| Docker Image | `alinmear/docker-conanexiles` |
+| Max Players | 40 |
+| Ports | 7777-7778 (UDP), 27015 (UDP) |
 
 ---
 
-## Abiotic Factor
+### ARK: Survival Ascended
 
 | Setting | Value |
 |---------|-------|
-| Default Port | 7777 |
-| Query Port | 27015 |
+| Config Location | `/opt/arkserver/ShooterGame/Saved/Config/WindowsServer/` |
+| Main Config | `GameUserSettings.ini` |
+| Game Rules | `Game.ini` |
+| Default Map | TheIsland_WP |
+| Max Players | 70 |
+| Ports | 7777-7778 (UDP), 27015 (UDP) |
+| Deployment | VM (Proton) |
+
+**Available Maps:**
+- `TheIsland_WP`, `ScorchedEarth_WP`, `Aberration_WP`
+- `TheCenter_WP`, `Ragnarok_WP`, `Extinction_WP`
+
+---
+
+### Abiotic Factor
+
+| Setting | Value |
+|---------|-------|
+| Default Port | 7777 (UDP) |
+| Query Port | 27015 (UDP) |
 | Max Players | 6 |
 
 ---
 
-## HumanitZ
+### HumanitZ
 
 | Setting | Value |
 |---------|-------|
-| Default Port | 7777 |
-| Query Port | 27015 |
-| Max Players | 16 |
+| Default Port | 7777 (UDP) |
+| Query Port | 27015 (UDP) |
+| Max Players | 32 |
 
 ---
 
-## San Andreas Multiplayer
+### Don't Starve Together
 
 | Setting | Value |
 |---------|-------|
-| Config Location | `/opt/sampserver/server.cfg` |
-| Gamemodes | `/opt/sampserver/gamemodes/` |
-| Default Port | 7777 |
-| Max Players | 50 |
+| Docker Image | `jamesits/dst-server` |
+| Max Players | Varies |
+| Ports | 10999, 10998 (UDP) |
+| Token Required | Yes (Klei account) |
 
 ---
 
-## Starbound
+## Sandbox & Building
+
+### Minecraft Java
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `itzg/minecraft-server` |
+| Server Types | VANILLA, PAPER, FORGE, FABRIC |
+| Max Players | 20 |
+| Ports | 25565 (TCP), 25575 (TCP RCON) |
+
+**Environment Variables:**
+```bash
+EULA=TRUE
+TYPE=PAPER
+VERSION=LATEST
+MEMORY=4G
+```
+
+---
+
+### Minecraft Bedrock
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `itzg/minecraft-bedrock-server` |
+| Max Players | 10 |
+| Port | 19132 (UDP) |
+
+---
+
+### Terraria
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `ryshe/terraria` |
+| Max Players | 8 |
+| Port | 7777 (TCP) |
+| Difficulty | 0=classic, 1=expert, 2=master, 3=journey |
+
+---
+
+### Starbound
 
 | Setting | Value |
 |---------|-------|
 | Config Location | `/opt/starboundserver/storage/starbound_server.config` |
-| Default Port | 21025 |
 | Max Players | 8 |
+| Port | 21025 (TCP) |
 
 ---
 
-## Unreal Tournament 99
+### Factorio
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `factoriotools/factorio` |
+| Port | 34197 (UDP) |
+
+---
+
+### Satisfactory
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `wolveix/satisfactory-server` |
+| Max Players | 4 |
+| Ports | 7777 (UDP), 15000 (UDP), 15777 (UDP) |
+
+---
+
+## Classic Games
+
+### Killing Floor
+
+| Setting | Value |
+|---------|-------|
+| Config Location | `/opt/kf1server/System/` |
+| Default Map | KF-WestLondon.rom |
+| Max Players | 6 |
+| Ports | 7707-7708, 7717, 28852 (UDP) |
+
+---
+
+### Killing Floor 2
+
+| Setting | Value |
+|---------|-------|
+| Config Location | `/opt/kf2server/KFGame/Config/` |
+| Web Admin | Port 8080 |
+| Default Map | KF-BioticsLab |
+| Max Players | 6 |
+| Ports | 7777 (UDP), 27015 (UDP), 8080 (TCP), 20560 (UDP) |
+| Difficulty | 0=Normal, 1=Hard, 2=Suicidal, 3=HOE |
+
+---
+
+### Unreal Tournament 99
 
 | Setting | Value |
 |---------|-------|
 | Config Location | `/opt/ut99server/System/UnrealTournament.ini` |
 | Default Map | DM-Deck16][ |
-| Ports | 7777 (game), 7778 (query) |
 | Max Players | 16 |
+| Ports | 7777-7779 (UDP), 27900 (UDP) |
 
 **Game Modes:**
 - Deathmatch: `Botpack.DeathMatchPlus`
 - Team DM: `Botpack.TeamGamePlus`
 - CTF: `Botpack.CTFGame`
 - Assault: `Botpack.Assault`
-- Domination: `Botpack.Domination`
 
 ---
 
-## Unreal Tournament 2004
+### Unreal Tournament 2004
 
 | Setting | Value |
 |---------|-------|
 | Config Location | `/opt/ut2004server/System/UT2004.ini` |
 | Default Map | DM-Rankin |
-| Ports | 7777 (game), 7778 (query), 8075 (web admin) |
 | Max Players | 16 |
-
-**Game Modes:**
-- Deathmatch: `XGame.xDeathMatch`
-- Team DM: `XGame.xTeamGame`
-- CTF: `XGame.xCTFGame`
-- Onslaught: `Onslaught.ONSOnslaughtGame`
+| Ports | 7777-7778, 7787, 28902 (UDP) |
 
 ---
 
-## Star Wars Galaxies EMU
+### San Andreas Multiplayer
 
 | Setting | Value |
 |---------|-------|
-| Install Location | `/opt/swgemu/` |
-| Config File | `bin/conf/config-local.lua` |
-| TRE Files | `/opt/swgemu/tre/` |
-| Login Port | 44419 |
-| Zone Port | 44453 |
-| Status Port | 44455 |
-
-**Requirements:** Debian 12+, Clang 19, MariaDB, 8GB+ RAM
-
-**Resources:**
-- [GitHub](https://github.com/swgemu/Core3)
-- [SWGEmu Wiki](https://www.swgemu.com/wiki/)
+| Config Location | `/opt/sampserver/server.cfg` |
+| Gamemodes | `/opt/sampserver/gamemodes/` |
+| Max Players | 50 |
+| Port | 7777 (UDP) |
 
 ---
 
-## World of Warcraft (AzerothCore)
+### Quake III Arena
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `jberrenberg/quake3` |
+| Max Players | 16 |
+| Port | 27960 (UDP) |
+
+---
+
+## MMO Emulators
+
+### World of Warcraft (AzerothCore)
 
 | Setting | Value |
 |---------|-------|
 | Install Location | `/opt/azerothcore/` |
 | Auth Config | `/opt/azerothcore/server/etc/authserver.conf` |
 | World Config | `/opt/azerothcore/server/etc/worldserver.conf` |
-| Auth Port | 3724 |
-| World Port | 8085 |
+| Auth Port | 3724 (TCP) |
+| World Port | 8085 (TCP) |
+| Deployment | VM (Compiled) |
 
 **Databases:** `acore_auth`, `acore_world`, `acore_characters`
 
@@ -342,11 +517,67 @@ sudo systemctl restart tf2server
 # gmlevel: 0=player, 1=mod, 2=gm, 3=admin
 ```
 
-**Client Setup:** Edit `realmlist.wtf`:
-```
-set realmlist <your-server-ip>
-```
+---
 
-**Resources:**
-- [AzerothCore Wiki](https://www.azerothcore.org/wiki/)
-- [GitHub](https://github.com/azerothcore/azerothcore-wotlk)
+### Star Wars Galaxies EMU
+
+| Setting | Value |
+|---------|-------|
+| Install Location | `/opt/swgemu/` |
+| Config File | `bin/conf/config-local.lua` |
+| TRE Files | `/opt/swgemu/tre/` |
+| Login Port | 44419 (TCP) |
+| Zone Port | 44453 (TCP) |
+| Status Port | 44455 (TCP) |
+| Deployment | VM (Compiled) |
+
+**Requirements:** Debian 12+, Clang 19, MariaDB, 8GB+ RAM
+
+---
+
+### City of Heroes
+
+| Setting | Value |
+|---------|-------|
+| Type | Windows VM |
+| Auth Port | 2104 (TCP) |
+| DB Port | 2105 (TCP) |
+| Game Ports | 7000-7100 (TCP/UDP) |
+| RAM Required | 8GB min, 32GB recommended |
+| Deployment | VM (Windows Server) |
+
+---
+
+## Server Management
+
+### Pterodactyl Panel
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `ghcr.io/pterodactyl/panel:latest` |
+| Ports | 80, 443, 8080, 2022 (TCP) |
+
+Web-based game server management panel supporting multiple games.
+
+---
+
+### Crafty Controller
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `registry.gitlab.com/crafty-controller/crafty-4:latest` |
+| Ports | 8443, 8123, 25500, 25565 (TCP) |
+
+Minecraft-focused server management panel.
+
+---
+
+### Foundry VTT
+
+| Setting | Value |
+|---------|-------|
+| Docker Image | `felddy/foundryvtt` |
+| Port | 30000 (TCP) |
+| License Required | Yes (Foundry account) |
+
+Virtual tabletop for D&D, Pathfinder, and other RPGs.

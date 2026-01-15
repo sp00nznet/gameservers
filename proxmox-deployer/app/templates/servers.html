@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Game Servers - Silverware Game Server Deployer{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        {% if current_category %}
+        {{ categories[current_category].name }}
+        {% elif search_query %}
+        Search: "{{ search_query }}"
+        {% else %}
+        All Game Servers
+        {% endif %}
+    </h1>
+    <span class="text-muted">{{ servers|length }} servers</span>
+</div>
+
+<!-- Search -->
+<div class="search-box">
+    <form method="get" action="{{ url_for('main.servers') }}">
+        <div class="input-group">
+            <input type="text" name="search" class="form-control" placeholder="Search servers..."
+                   value="{{ search_query or '' }}">
+            <button class="btn btn-primary" type="submit">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Category Filter -->
+<div class="category-filter">
+    <a href="{{ url_for('main.servers') }}"
+       class="btn {% if not current_category and not search_query %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        All
+    </a>
+    {% for cat_key, cat in categories.items() %}
+    <a href="{{ url_for('main.servers', category=cat_key) }}"
+       class="btn {% if current_category == cat_key %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+       style="{% if current_category == cat_key %}background-color: {{ cat.color }}; border-color: {{ cat.color }};{% endif %}">
+        <i class="bi bi-{{ cat.icon }} me-1"></i> {{ cat.name }}
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Server Grid -->
+<div class="row">
+    {% for key, server in servers.items() %}
+    <div class="col-lg-4 col-md-6 mb-4">
+        <a href="{{ url_for('main.server_detail', server_key=key) }}" class="text-decoration-none">
+            <div class="card server-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="server-icon me-3" style="background-color: {{ categories[server.category].color }}20;">
+                            <i class="bi bi-{{ server.icon }}" style="color: {{ categories[server.category].color }};"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="mb-1">{{ server.name }}</h5>
+                            <span class="category-badge" style="background-color: {{ categories[server.category].color }}20; color: {{ categories[server.category].color }};">
+                                {{ categories[server.category].name }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <p class="text-muted small mb-3">{{ server.description }}</p>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted">
+                            <i class="bi bi-cpu me-1"></i>{{ server.cores }} cores
+                            <i class="bi bi-memory ms-2 me-1"></i>{{ (server.memory / 1024)|round(1) }}GB
+                        </small>
+                        <span class="badge bg-{{ 'info' if server.deployment_type == 'lxc' else 'warning' }}">
+                            {{ server.deployment_type|upper }}
+                        </span>
+                    </div>
+
+                    <div class="mb-2">
+                        {% for port in server.ports[:4] %}
+                        <span class="port-badge">{{ port }}</span>
+                        {% endfor %}
+                        {% if server.ports|length > 4 %}
+                        <span class="port-badge">+{{ server.ports|length - 4 }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        {% for tag in server.tags[:4] %}
+                        <span class="tag-badge">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-top-0">
+                    <button class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-rocket-takeoff me-1"></i> Deploy
+                    </button>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not servers %}
+<div class="text-center py-5">
+    <i class="bi bi-search" style="font-size: 4rem; color: #8b949e;"></i>
+    <h3 class="mt-3">No servers found</h3>
+    <p class="text-muted">Try adjusting your search or filter criteria</p>
+    <a href="{{ url_for('main.servers') }}" class="btn btn-primary">View All Servers</a>
+</div>
+{% endif %}
+{% endblock %}

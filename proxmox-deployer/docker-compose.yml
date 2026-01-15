@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  deployer:
+    build: .
+    container_name: silverware-deployer
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - deployer_data:/data
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - DATABASE_URL=sqlite:////data/deployer.db
+      - FLASK_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  deployer_data:
+    driver: local
