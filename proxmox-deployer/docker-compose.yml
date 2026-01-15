@@ -6,7 +6,7 @@ services:
     container_name: silverware-deployer
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "5555:5555"
     volumes:
       - deployer_data:/data
     environment:
@@ -14,7 +14,7 @@ services:
       - DATABASE_URL=sqlite:////data/deployer.db
       - FLASK_ENV=production
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:5555/"]
       interval: 30s
       timeout: 10s
       retries: 3
