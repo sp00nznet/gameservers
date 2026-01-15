@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}{{ server.name }} - Silverware Game Server Deployer{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('main.servers') }}">Game Servers</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('main.servers', category=server.category) }}">{{ categories[server.category].name }}</a></li>
+        <li class="breadcrumb-item active">{{ server.name }}</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <!-- Server Info -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="server-icon me-3" style="background-color: {{ categories[server.category].color }}20; width: 64px; height: 64px; font-size: 32px;">
+                        <i class="bi bi-{{ server.icon }}" style="color: {{ categories[server.category].color }};"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-1">{{ server.name }}</h3>
+                        <span class="category-badge" style="background-color: {{ categories[server.category].color }}20; color: {{ categories[server.category].color }};">
+                            {{ categories[server.category].name }}
+                        </span>
+                    </div>
+                </div>
+
+                <p class="mb-4">{{ server.description }}</p>
+
+                <h6 class="text-muted mb-2">Specifications</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td><i class="bi bi-box me-2"></i>Type</td>
+                        <td><span class="badge bg-{{ 'info' if server.deployment_type == 'lxc' else 'warning' }}">{{ server.deployment_type|upper }}</span></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-cpu me-2"></i>CPU Cores</td>
+                        <td>{{ server.cores }}</td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-memory me-2"></i>Memory</td>
+                        <td>{{ (server.memory / 1024)|round(1) }} GB</td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-hdd me-2"></i>Disk</td>
+                        <td>{{ server.disk_size }} GB</td>
+                    </tr>
+                    {% if server.steam_app_id %}
+                    <tr>
+                        <td><i class="bi bi-steam me-2"></i>Steam App ID</td>
+                        <td>{{ server.steam_app_id }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+
+                <h6 class="text-muted mb-2 mt-4">Network Ports</h6>
+                <div class="mb-3">
+                    {% for port in server.ports %}
+                    <span class="port-badge">{{ port }}</span>
+                    {% endfor %}
+                    <br><small class="text-muted">Protocol: {{ server.protocol }}</small>
+                </div>
+
+                <h6 class="text-muted mb-2">Tags</h6>
+                <div>
+                    {% for tag in server.tags %}
+                    <span class="tag-badge">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deployment Form -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-rocket-takeoff me-2"></i>Deploy {{ server.name }}
+            </div>
+            <div class="card-body">
+                {% if not connections %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    No Proxmox connections configured. <a href="{{ url_for('main.settings') }}">Add a connection</a> first.
+                </div>
+                {% else %}
+                <form id="deployForm">
+                    <input type="hidden" name="server_key" value="{{ server_key }}">
+
+                    <!-- Connection & Node -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Proxmox Connection</label>
+                            <select class="form-select" id="connectionSelect" name="connection_id" required>
+                                <option value="">Select connection...</option>
+                                {% for conn in connections %}
+                                <option value="{{ conn.id }}" {% if conn.is_default %}selected{% endif %}>
+                                    {{ conn.name }} ({{ conn.host }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Target Node</label>
+                            <select class="form-select" id="nodeSelect" name="node" required disabled>
+                                <option value="">Select node...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Template -->
+                    <div class="mb-4">
+                        <label class="form-label">
+                            {% if server.deployment_type == 'lxc' %}
+                            LXC Template
+                            {% else %}
+                            VM Template
+                            {% endif %}
+                        </label>
+                        <select class="form-select" id="templateSelect" name="template" required disabled>
+                            <option value="">Select template...</option>
+                        </select>
+                        <small class="text-muted">
+                            {% if server.deployment_type == 'lxc' %}
+                            Choose an Ubuntu 22.04 template for best compatibility
+                            {% else %}
+                            Choose the {{ server.template_type or 'ubuntu-docker' }} template
+                            {% endif %}
+                        </small>
+                    </div>
+
+                    <!-- Resources -->
+                    <h6 class="text-muted mb-3">Resources</h6>
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Hostname</label>
+                            <input type="text" class="form-control" name="hostname" value="{{ server.hostname }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">CPU Cores</label>
+                            <input type="number" class="form-control" name="cores" value="{{ server.cores }}" min="1" max="32">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Memory (MB)</label>
+                            <input type="number" class="form-control" name="memory" value="{{ server.memory }}" min="512" step="512">
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Disk Size (GB)</label>
+                            <input type="number" class="form-control" name="disk_size" value="{{ server.disk_size }}" min="5">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Storage Pool</label>
+                            <select class="form-select" id="storageSelect" name="storage" disabled>
+                                <option value="local-lvm">local-lvm</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Network Bridge</label>
+                            <select class="form-select" id="bridgeSelect" name="bridge" disabled>
+                                <option value="vmbr0">vmbr0</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Network Configuration -->
+                    <h6 class="text-muted mb-3">Network Configuration</h6>
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="dhcpSwitch" name="dhcp" checked>
+                                <label class="form-check-label" for="dhcpSwitch">Use DHCP</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">IP Address</label>
+                            <input type="text" class="form-control" id="ipAddress" name="ip_address" placeholder="192.168.1.100" disabled>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">CIDR</label>
+                            <input type="number" class="form-control" id="cidr" name="cidr" value="24" min="8" max="32" disabled>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Gateway</label>
+                            <input type="text" class="form-control" id="gateway" name="gateway" placeholder="192.168.1.1" disabled>
+                        </div>
+                    </div>
+
+                    <!-- Environment Variables -->
+                    {% if server.env_vars %}
+                    <h6 class="text-muted mb-3">Configuration</h6>
+                    <div class="mb-4">
+                        {% for env in server.env_vars %}
+                        <div class="env-var-row">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <label class="form-label mb-0">
+                                        {{ env.name }}
+                                        {% if env.required %}
+                                        <span class="text-danger">*</span>
+                                        {% endif %}
+                                    </label>
+                                    <br><small class="text-muted">{{ env.description }}</small>
+                                </div>
+                                <div class="col-md-8">
+                                    <input type="{{ 'password' if env.secret else 'text' }}"
+                                           class="form-control"
+                                           name="env_{{ env.name }}"
+                                           value="{{ env.default or '' }}"
+                                           {% if env.required %}required{% endif %}>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Options -->
+                    <h6 class="text-muted mb-3">Options</h6>
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="startSwitch" name="start" checked>
+                                <label class="form-check-label" for="startSwitch">Start after creation</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="onbootSwitch" name="onboot" checked>
+                                <label class="form-check-label" for="onbootSwitch">Start on boot</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('main.servers') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Back
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg" id="deployBtn">
+                            <i class="bi bi-rocket-takeoff me-2"></i> Deploy Server
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const connectionSelect = document.getElementById('connectionSelect');
+const nodeSelect = document.getElementById('nodeSelect');
+const templateSelect = document.getElementById('templateSelect');
+const storageSelect = document.getElementById('storageSelect');
+const bridgeSelect = document.getElementById('bridgeSelect');
+const dhcpSwitch = document.getElementById('dhcpSwitch');
+const ipAddress = document.getElementById('ipAddress');
+const cidr = document.getElementById('cidr');
+const gateway = document.getElementById('gateway');
+const deploymentType = '{{ server.deployment_type }}';
+
+// Connection change handler
+connectionSelect.addEventListener('change', async function() {
+    const connectionId = this.value;
+    if (!connectionId) {
+        nodeSelect.innerHTML = '<option value="">Select node...</option>';
+        nodeSelect.disabled = true;
+        return;
+    }
+
+    try {
+        const nodes = await apiCall(`/api/connections/${connectionId}/nodes`);
+        nodeSelect.innerHTML = '<option value="">Select node...</option>';
+        nodes.forEach(node => {
+            const opt = document.createElement('option');
+            opt.value = node.node;
+            opt.textContent = `${node.node} (${node.status})`;
+            nodeSelect.appendChild(opt);
+        });
+        nodeSelect.disabled = false;
+    } catch (error) {
+        showToast(`Error loading nodes: ${error.message}`, 'danger');
+    }
+});
+
+// Node change handler
+nodeSelect.addEventListener('change', async function() {
+    const connectionId = connectionSelect.value;
+    const node = this.value;
+    if (!node) return;
+
+    try {
+        // Load templates
+        const templates = await apiCall(`/api/connections/${connectionId}/nodes/${node}/templates`);
+        templateSelect.innerHTML = '<option value="">Select template...</option>';
+
+        if (deploymentType === 'lxc') {
+            templates.lxc.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.volid;
+                opt.textContent = t.name;
+                templateSelect.appendChild(opt);
+            });
+        } else {
+            templates.vm.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.vmid;
+                opt.textContent = `${t.name} (VMID: ${t.vmid})`;
+                templateSelect.appendChild(opt);
+            });
+        }
+        templateSelect.disabled = false;
+
+        // Load storage
+        const storage = await apiCall(`/api/connections/${connectionId}/nodes/${node}/storage`);
+        storageSelect.innerHTML = '';
+        storage.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.storage;
+            opt.textContent = `${s.storage} (${s.type})`;
+            storageSelect.appendChild(opt);
+        });
+        storageSelect.disabled = false;
+
+        // Load networks
+        const networks = await apiCall(`/api/connections/${connectionId}/nodes/${node}/networks`);
+        bridgeSelect.innerHTML = '';
+        networks.forEach(n => {
+            const opt = document.createElement('option');
+            opt.value = n.iface;
+            opt.textContent = n.iface;
+            bridgeSelect.appendChild(opt);
+        });
+        bridgeSelect.disabled = false;
+
+    } catch (error) {
+        showToast(`Error loading node data: ${error.message}`, 'danger');
+    }
+});
+
+// DHCP toggle
+dhcpSwitch.addEventListener('change', function() {
+    const disabled = this.checked;
+    ipAddress.disabled = disabled;
+    cidr.disabled = disabled;
+    gateway.disabled = disabled;
+});
+
+// Deploy form submit
+document.getElementById('deployForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const deployBtn = document.getElementById('deployBtn');
+    deployBtn.disabled = true;
+    deployBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deploying...';
+
+    const formData = new FormData(this);
+    const data = {
+        server_key: formData.get('server_key'),
+        connection_id: parseInt(formData.get('connection_id')),
+        node: formData.get('node'),
+        hostname: formData.get('hostname'),
+        cores: parseInt(formData.get('cores')),
+        memory: parseInt(formData.get('memory')),
+        disk_size: parseInt(formData.get('disk_size')),
+        storage: formData.get('storage'),
+        bridge: formData.get('bridge'),
+        dhcp: formData.get('dhcp') === 'on',
+        start: formData.get('start') === 'on',
+        onboot: formData.get('onboot') === 'on',
+        env_vars: {}
+    };
+
+    // Add template based on deployment type
+    if (deploymentType === 'lxc') {
+        data.template = formData.get('template');
+    } else {
+        data.template_vmid = parseInt(formData.get('template'));
+    }
+
+    // Add static IP if not DHCP
+    if (!data.dhcp) {
+        data.ip_address = formData.get('ip_address');
+        data.cidr = parseInt(formData.get('cidr'));
+        data.gateway = formData.get('gateway');
+    }
+
+    // Collect environment variables
+    for (const [key, value] of formData.entries()) {
+        if (key.startsWith('env_') && value) {
+            data.env_vars[key.replace('env_', '')] = value;
+        }
+    }
+
+    try {
+        const result = await apiCall('/api/deploy', 'POST', data);
+        if (result.status === 'failed') {
+            showToast(`Deployment failed: ${result.error_message}`, 'danger');
+        } else {
+            showToast('Server deployed successfully!', 'success');
+            setTimeout(() => {
+                window.location.href = '{{ url_for("main.deployments") }}';
+            }, 1500);
+        }
+    } catch (error) {
+        showToast(`Error: ${error.message}`, 'danger');
+    } finally {
+        deployBtn.disabled = false;
+        deployBtn.innerHTML = '<i class="bi bi-rocket-takeoff me-2"></i> Deploy Server';
+    }
+});
+
+// Auto-load nodes if default connection is selected
+if (connectionSelect.value) {
+    connectionSelect.dispatchEvent(new Event('change'));
+}
+</script>
+{% endblock %}

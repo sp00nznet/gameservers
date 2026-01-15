@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Silverware Game Server Deployer{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --bs-body-bg: #0d1117;
+            --bs-body-color: #c9d1d9;
+            --sidebar-bg: #161b22;
+            --card-bg: #161b22;
+            --card-border: #30363d;
+            --accent-color: #58a6ff;
+            --success-color: #3fb950;
+            --warning-color: #d29922;
+            --danger-color: #f85149;
+        }
+
+        body {
+            background-color: var(--bs-body-bg);
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--card-border);
+            min-height: 100vh;
+            position: fixed;
+            width: 260px;
+            padding-top: 1rem;
+        }
+
+        .sidebar .nav-link {
+            color: var(--bs-body-color);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin: 2px 8px;
+        }
+
+        .sidebar .nav-link:hover {
+            background-color: rgba(88, 166, 255, 0.1);
+            color: var(--accent-color);
+        }
+
+        .sidebar .nav-link.active {
+            background-color: rgba(88, 166, 255, 0.15);
+            color: var(--accent-color);
+        }
+
+        .sidebar .nav-link i {
+            margin-right: 10px;
+            width: 20px;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            padding: 2rem;
+        }
+
+        .brand {
+            padding: 0 1rem 1rem;
+            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 1rem;
+        }
+
+        .brand h4 {
+            color: var(--accent-color);
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .brand small {
+            color: #8b949e;
+            font-size: 0.75rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+        }
+
+        .card-header {
+            background-color: transparent;
+            border-bottom: 1px solid var(--card-border);
+            font-weight: 600;
+        }
+
+        .server-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .server-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border-color: var(--accent-color);
+        }
+
+        .server-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .category-badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .stat-card h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            margin: 0;
+        }
+
+        .stat-card p {
+            margin: 0;
+            color: #8b949e;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-running {
+            background-color: rgba(63, 185, 80, 0.2);
+            color: var(--success-color);
+        }
+
+        .status-stopped {
+            background-color: rgba(139, 148, 158, 0.2);
+            color: #8b949e;
+        }
+
+        .status-failed {
+            background-color: rgba(248, 81, 73, 0.2);
+            color: var(--danger-color);
+        }
+
+        .status-pending {
+            background-color: rgba(210, 153, 34, 0.2);
+            color: var(--warning-color);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .btn-primary:hover {
+            background-color: #4393e6;
+            border-color: #4393e6;
+        }
+
+        .form-control, .form-select {
+            background-color: #0d1117;
+            border-color: var(--card-border);
+            color: var(--bs-body-color);
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: #0d1117;
+            border-color: var(--accent-color);
+            color: var(--bs-body-color);
+            box-shadow: 0 0 0 0.25rem rgba(88, 166, 255, 0.25);
+        }
+
+        .table {
+            --bs-table-bg: transparent;
+            --bs-table-border-color: var(--card-border);
+        }
+
+        .port-badge {
+            background-color: rgba(88, 166, 255, 0.1);
+            color: var(--accent-color);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            margin: 2px;
+            display: inline-block;
+        }
+
+        .tag-badge {
+            background-color: rgba(139, 148, 158, 0.2);
+            color: #8b949e;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin: 2px;
+        }
+
+        .category-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .category-filter .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .search-box {
+            max-width: 400px;
+            margin-bottom: 1.5rem;
+        }
+
+        .env-var-row {
+            background-color: #0d1117;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1100;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: relative;
+                min-height: auto;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="brand">
+                <h4><i class="bi bi-controller"></i> Silverware</h4>
+                <small>Game Server Deployer</small>
+            </div>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}" href="{{ url_for('main.index') }}">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'main.servers' %}active{% endif %}" href="{{ url_for('main.servers') }}">
+                        <i class="bi bi-grid-3x3-gap"></i> Game Servers
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'main.deployments' %}active{% endif %}" href="{{ url_for('main.deployments') }}">
+                        <i class="bi bi-hdd-stack"></i> Deployments
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'main.settings' %}active{% endif %}" href="{{ url_for('main.settings') }}">
+                        <i class="bi bi-gear"></i> Settings
+                    </a>
+                </li>
+            </ul>
+
+            <div class="mt-4 px-3">
+                <small class="text-muted">Categories</small>
+            </div>
+            <ul class="nav flex-column">
+                {% for cat_key, cat in categories.items() %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('main.servers', category=cat_key) }}">
+                        <i class="bi bi-{{ cat.icon }}"></i> {{ cat.name }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content flex-grow-1">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-bg-${type} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            container.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            toast.addEventListener('hidden.bs.toast', () => toast.remove());
+        }
+
+        async function apiCall(url, method = 'GET', data = null) {
+            const options = {
+                method,
+                headers: { 'Content-Type': 'application/json' }
+            };
+            if (data) options.body = JSON.stringify(data);
+
+            const response = await fetch(url, options);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'API call failed');
+            }
+            return result;
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

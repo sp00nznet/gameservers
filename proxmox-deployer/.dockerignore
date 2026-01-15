@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+
+# Docs
+docs/
+*.md
+
+# Database (will be mounted as volume)
+*.db
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
