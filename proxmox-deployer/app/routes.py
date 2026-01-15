@@ -11,6 +11,7 @@ from app.game_servers import (
     GAME_SERVERS, CATEGORIES, STATS,
     get_servers_by_category, get_server, search_servers
 )
+from app.install_scripts import get_install_script, get_available_scripts
 
 main_bp = Blueprint('main', __name__)
 
@@ -328,9 +329,39 @@ def api_deploy():
 
         if result['success']:
             deployment.vmid = result['vmid']
-            deployment.status = 'running' if config.get('start') else 'stopped'
+            deployment.status = 'provisioning'
             if not config.get('dhcp') and config.get('ip_address'):
                 deployment.ip_address = config['ip_address']
+            db.session.commit()
+
+            # Auto-provision if install script is available (LXC only)
+            if server['deployment_type'] == 'lxc':
+                install_script = get_install_script(
+                    data['server_key'],
+                    env_vars=data.get('env_vars', {})
+                )
+                if install_script:
+                    # Give the container a moment to fully start
+                    import time
+                    time.sleep(5)
+
+                    provision_result = client.provision_container(
+                        data['node'],
+                        result['vmid'],
+                        install_script
+                    )
+
+                    if provision_result['success']:
+                        deployment.status = 'running' if config.get('start') else 'stopped'
+                    else:
+                        deployment.status = 'provision_failed'
+                        deployment.error_message = provision_result.get('error', 'Provisioning failed')
+                else:
+                    # No install script available, just mark as running
+                    deployment.status = 'running' if config.get('start') else 'stopped'
+            else:
+                # VMs don't auto-provision
+                deployment.status = 'running' if config.get('start') else 'stopped'
         else:
             deployment.status = 'failed'
             deployment.error_message = result.get('error', 'Unknown error')
@@ -561,4 +592,200 @@ def api_get_stats():
     return jsonify({
         'servers': STATS,
         'deployments': deployment_stats
+    })
+
+
+# ============================================
+# PROVISIONING API ROUTES
+# ============================================
+
+@main_bp.route('/api/install-scripts', methods=['GET'])
+def api_get_install_scripts():
+    """Get list of all available installation scripts."""
+    return jsonify(get_available_scripts())
+
+
+@main_bp.route('/api/install-scripts/<server_key>', methods=['GET'])
+def api_get_install_script(server_key):
+    """Get the installation script for a specific server."""
+    script = get_install_script(server_key)
+    if not script:
+        return jsonify({'error': f'No install script available for {server_key}'}), 404
+    return jsonify({
+        'server_key': server_key,
+        'script': script
+    })
+
+
+@main_bp.route('/api/manage/provision', methods=['POST'])
+def api_provision_container():
+    """
+    Provision (or re-provision) an existing container with a game server.
+
+    Request body:
+    {
+        "connection_id": 1,
+        "node": "proxmox-node",
+        "vmid": 100,
+        "server_key": "valheim",
+        "env_vars": {}  // optional
+    }
+    """
+    data = request.get_json()
+
+    # Validate required fields
+    required = ['connection_id', 'node', 'vmid', 'server_key']
+    for field in required:
+        if not data.get(field):
+            return jsonify({'error': f'Missing required field: {field}'}), 400
+
+    # Get connection
+    connection = ProxmoxConnection.query.get(data['connection_id'])
+    if not connection:
+        return jsonify({'error': 'Invalid connection'}), 400
+
+    # Check if connection uses password (required for SSH)
+    if not connection.password:
+        return jsonify({
+            'error': 'Password authentication required for provisioning. API tokens cannot use SSH.'
+        }), 400
+
+    # Get install script
+    install_script = get_install_script(
+        data['server_key'],
+        env_vars=data.get('env_vars', {})
+    )
+    if not install_script:
+        return jsonify({
+            'error': f'No install script available for {data["server_key"]}'
+        }), 404
+
+    # Execute provisioning
+    client = ProxmoxClient(connection)
+
+    # First check if container is running
+    status_result = client.get_container_status(data['node'], data['vmid'], 'lxc')
+    if not status_result.get('success'):
+        return jsonify({
+            'error': f'Could not get container status: {status_result.get("error")}'
+        }), 500
+
+    if status_result.get('status') != 'running':
+        # Try to start the container
+        start_result = client.start_container(data['node'], data['vmid'], 'lxc')
+        if not start_result.get('success'):
+            return jsonify({
+                'error': f'Container is not running and could not be started: {start_result.get("error")}'
+            }), 500
+        # Wait for container to start
+        import time
+        time.sleep(5)
+
+    # Run provisioning
+    result = client.provision_container(
+        data['node'],
+        data['vmid'],
+        install_script,
+        timeout=data.get('timeout', 600)
+    )
+
+    # Update deployment record if it exists
+    deployment = Deployment.query.filter_by(
+        vmid=data['vmid'],
+        node=data['node']
+    ).first()
+    if deployment:
+        if result['success']:
+            deployment.status = 'running'
+            deployment.error_message = None
+        else:
+            deployment.status = 'provision_failed'
+            deployment.error_message = result.get('error')
+        db.session.commit()
+
+    return jsonify(result)
+
+
+@main_bp.route('/api/manage/exec', methods=['POST'])
+def api_exec_in_container():
+    """
+    Execute a command inside a container.
+
+    Request body:
+    {
+        "connection_id": 1,
+        "node": "proxmox-node",
+        "vmid": 100,
+        "command": "systemctl status valheim"
+    }
+    """
+    data = request.get_json()
+
+    required = ['connection_id', 'node', 'vmid', 'command']
+    for field in required:
+        if not data.get(field):
+            return jsonify({'error': f'Missing required field: {field}'}), 400
+
+    connection = ProxmoxConnection.query.get(data['connection_id'])
+    if not connection:
+        return jsonify({'error': 'Invalid connection'}), 400
+
+    if not connection.password:
+        return jsonify({
+            'error': 'Password authentication required. API tokens cannot use SSH.'
+        }), 400
+
+    client = ProxmoxClient(connection)
+    result = client.exec_in_container(
+        data['node'],
+        data['vmid'],
+        data['command'],
+        timeout=data.get('timeout', 60)
+    )
+
+    return jsonify(result)
+
+
+@main_bp.route('/api/deployments/<int:deployment_id>/provision', methods=['POST'])
+def api_provision_deployment(deployment_id):
+    """Re-provision an existing deployment."""
+    deployment = Deployment.query.get_or_404(deployment_id)
+    connection = deployment.connection
+
+    if not connection.password:
+        return jsonify({
+            'error': 'Password authentication required for provisioning.'
+        }), 400
+
+    # Get install script for this server
+    install_script = get_install_script(deployment.server_key)
+    if not install_script:
+        return jsonify({
+            'error': f'No install script available for {deployment.server_key}'
+        }), 404
+
+    client = ProxmoxClient(connection)
+
+    # Update status
+    deployment.status = 'provisioning'
+    db.session.commit()
+
+    # Run provisioning
+    result = client.provision_container(
+        deployment.node,
+        deployment.vmid,
+        install_script
+    )
+
+    if result['success']:
+        deployment.status = 'running'
+        deployment.error_message = None
+    else:
+        deployment.status = 'provision_failed'
+        deployment.error_message = result.get('error')
+
+    db.session.commit()
+    return jsonify({
+        'provision_result': result,
+        'deployment': deployment.to_dict()
     })
