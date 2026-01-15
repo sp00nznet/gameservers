@@ -16,6 +16,9 @@ CATEGORIES = {
     'milsim': {'name': 'Military Simulation', 'icon': 'target', 'color': '#4a5568'},
     'racing': {'name': 'Racing & Simulation', 'icon': 'truck', 'color': '#dc2626'},
     'roleplay': {'name': 'Roleplay', 'icon': 'message-circle', 'color': '#7c3aed'},
+    'arena': {'name': 'Arena & Competitive', 'icon': 'crosshair', 'color': '#ef4444'},
+    'coop': {'name': 'Co-op & Multiplayer', 'icon': 'users', 'color': '#10b981'},
+    'voice': {'name': 'Voice & Communication', 'icon': 'mic', 'color': '#6366f1'},
 }
 
 # Game server definitions
@@ -1847,6 +1850,1357 @@ GAME_SERVERS = {
         'privileged': False,
         'nesting': True,
         'env_vars': [],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM GAMES - Call of Duty Series
+    # ============================================
+    'cod4': {
+        'name': 'Call of Duty 4: Modern Warfare',
+        'hostname': 'cod4-server',
+        'description': 'Call of Duty 4: Modern Warfare dedicated server (LinuxGSM)',
+        'category': 'classic',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 2048,
+        'disk_size': 15,
+        'ports': [28960, 28961],
+        'protocol': 'UDP',
+        'tags': ['fps', 'cod', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'cod4server',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'COD4 Server'},
+            {'name': 'RCON_PASSWORD', 'description': 'RCON password', 'required': True, 'secret': True},
+        ],
+        'setup_script': None
+    },
+
+    'cod2': {
+        'name': 'Call of Duty 2',
+        'hostname': 'cod2-server',
+        'description': 'Call of Duty 2 dedicated server (LinuxGSM)',
+        'category': 'classic',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 1024,
+        'disk_size': 10,
+        'ports': [28960],
+        'protocol': 'UDP',
+        'tags': ['fps', 'cod', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'cod2server',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'COD2 Server'},
+        ],
+        'setup_script': None
+    },
+
+    'codwaw': {
+        'name': 'Call of Duty: World at War',
+        'hostname': 'codwaw-server',
+        'description': 'Call of Duty: World at War dedicated server (LinuxGSM)',
+        'category': 'classic',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 2048,
+        'disk_size': 15,
+        'ports': [28960],
+        'protocol': 'UDP',
+        'tags': ['fps', 'cod', 'ww2', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'codwawserver',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'COD:WAW Server'},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM GAMES - Battlefield Series
+    # ============================================
+    'bf1942': {
+        'name': 'Battlefield 1942',
+        'hostname': 'bf1942-server',
+        'description': 'Battlefield 1942 classic dedicated server (LinuxGSM)',
+        'category': 'classic',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 1024,
+        'disk_size': 10,
+        'ports': [14567, 14690, 22000, 23000],
+        'protocol': 'UDP',
+        'tags': ['fps', 'battlefield', 'ww2', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'bf1942server',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'BF1942 Server'},
+        ],
+        'setup_script': None
+    },
+
+    'bfv': {
+        'name': 'Battlefield: Vietnam',
+        'hostname': 'bfv-server',
+        'description': 'Battlefield: Vietnam dedicated server (LinuxGSM)',
+        'category': 'classic',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 1024,
+        'disk_size': 10,
+        'ports': [15567, 23000],
+        'protocol': 'UDP',
+        'tags': ['fps', 'battlefield', 'vietnam', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'bfvserver',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'BFV Server'},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM GAMES - Wolfenstein Series
+    # ============================================
+    'rtcw': {
+        'name': 'Return to Castle Wolfenstein',
+        'hostname': 'rtcw-server',
+        'description': 'Return to Castle Wolfenstein dedicated server (LinuxGSM)',
+        'category': 'classic',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 1,
+        'memory': 512,
+        'disk_size': 5,
+        'ports': [27960, 27961],
+        'protocol': 'UDP',
+        'tags': ['fps', 'wolfenstein', 'ww2', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'rtcwserver',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'RTCW Server'},
+        ],
+        'setup_script': None
+    },
+
+    'wolfet': {
+        'name': 'Wolfenstein: Enemy Territory',
+        'hostname': 'wet-server',
+        'description': 'Wolfenstein: Enemy Territory / ET:Legacy server (LinuxGSM)',
+        'category': 'classic',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 1024,
+        'disk_size': 5,
+        'ports': [27960, 27961],
+        'protocol': 'UDP',
+        'tags': ['fps', 'wolfenstein', 'ww2', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'etlserver',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'W:ET Server'},
+            {'name': 'RCON_PASSWORD', 'description': 'RCON password', 'required': True, 'secret': True},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM GAMES - Source Engine Additional
+    # ============================================
+    'dod': {
+        'name': 'Day of Defeat',
+        'hostname': 'dod-server',
+        'description': 'Day of Defeat classic server (LinuxGSM)',
+        'category': 'source',
+        'deployment_type': 'lxc',
+        'steam_app_id': 30,
+        'cores': 2,
+        'memory': 2048,
+        'disk_size': 15,
+        'ports': [27015],
+        'protocol': 'UDP/TCP',
+        'tags': ['source', 'ww2', 'fps', 'steam', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'dodserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SRCDS_TOKEN', 'description': 'Steam GSLT', 'required': False, 'secret': True},
+        ],
+        'setup_script': None
+    },
+
+    'dods': {
+        'name': 'Day of Defeat: Source',
+        'hostname': 'dods-server',
+        'description': 'Day of Defeat: Source dedicated server (LinuxGSM)',
+        'category': 'source',
+        'deployment_type': 'lxc',
+        'steam_app_id': 232290,
+        'cores': 2,
+        'memory': 2048,
+        'disk_size': 15,
+        'ports': [27015],
+        'protocol': 'UDP/TCP',
+        'tags': ['source', 'ww2', 'fps', 'steam', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'dodsserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SRCDS_TOKEN', 'description': 'Steam GSLT', 'required': False, 'secret': True},
+        ],
+        'setup_script': None
+    },
+
+    'doi': {
+        'name': 'Day of Infamy',
+        'hostname': 'doi-server',
+        'description': 'Day of Infamy WW2 tactical shooter server (LinuxGSM)',
+        'category': 'milsim',
+        'deployment_type': 'lxc',
+        'steam_app_id': 462310,
+        'cores': 4,
+        'memory': 4096,
+        'disk_size': 30,
+        'ports': [27015, 27016],
+        'protocol': 'UDP/TCP',
+        'tags': ['source', 'ww2', 'tactical', 'steam', 'linuxgsm'],
+        'icon': 'target',
+        'linuxgsm_name': 'doiserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SRCDS_TOKEN', 'description': 'Steam GSLT', 'required': True, 'secret': True},
+        ],
+        'setup_script': None
+    },
+
+    'insurgency': {
+        'name': 'Insurgency',
+        'hostname': 'ins-server',
+        'description': 'Insurgency (original) tactical shooter server (LinuxGSM)',
+        'category': 'milsim',
+        'deployment_type': 'lxc',
+        'steam_app_id': 237410,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [27015, 27016],
+        'protocol': 'UDP/TCP',
+        'tags': ['source', 'tactical', 'fps', 'steam', 'linuxgsm'],
+        'icon': 'target',
+        'linuxgsm_name': 'insserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SRCDS_TOKEN', 'description': 'Steam GSLT', 'required': True, 'secret': True},
+        ],
+        'setup_script': None
+    },
+
+    'nmrih': {
+        'name': 'No More Room in Hell',
+        'hostname': 'nmrih-server',
+        'description': 'No More Room in Hell zombie survival server (LinuxGSM)',
+        'category': 'coop',
+        'deployment_type': 'lxc',
+        'steam_app_id': 317670,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [27015, 27016],
+        'protocol': 'UDP/TCP',
+        'tags': ['source', 'zombie', 'coop', 'steam', 'linuxgsm'],
+        'icon': 'skull',
+        'linuxgsm_name': 'nmrihserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SRCDS_TOKEN', 'description': 'Steam GSLT', 'required': False, 'secret': True},
+        ],
+        'setup_script': None
+    },
+
+    'fof': {
+        'name': 'Fistful of Frags',
+        'hostname': 'fof-server',
+        'description': 'Fistful of Frags western shooter server (LinuxGSM)',
+        'category': 'source',
+        'deployment_type': 'lxc',
+        'steam_app_id': 295230,
+        'cores': 2,
+        'memory': 2048,
+        'disk_size': 15,
+        'ports': [27015],
+        'protocol': 'UDP/TCP',
+        'tags': ['source', 'western', 'fps', 'steam', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'fofserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SRCDS_TOKEN', 'description': 'Steam GSLT', 'required': False, 'secret': True},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM GAMES - Medieval/Melee Combat
+    # ============================================
+    'chivalry': {
+        'name': 'Chivalry: Medieval Warfare',
+        'hostname': 'chivalry-server',
+        'description': 'Chivalry: Medieval Warfare server (LinuxGSM)',
+        'category': 'arena',
+        'deployment_type': 'lxc',
+        'steam_app_id': 220070,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [7777, 27015, 8080],
+        'protocol': 'UDP',
+        'tags': ['medieval', 'melee', 'steam', 'linuxgsm'],
+        'icon': 'sword',
+        'linuxgsm_name': 'cmwserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Chivalry Server'},
+        ],
+        'setup_script': None
+    },
+
+    'mordhau': {
+        'name': 'MORDHAU',
+        'hostname': 'mordhau-server',
+        'description': 'MORDHAU medieval melee combat server (LinuxGSM)',
+        'category': 'arena',
+        'deployment_type': 'lxc',
+        'steam_app_id': 629800,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 40,
+        'ports': [7777, 27015, 15000],
+        'protocol': 'UDP',
+        'tags': ['medieval', 'melee', 'steam', 'linuxgsm'],
+        'icon': 'sword',
+        'linuxgsm_name': 'mhserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'MORDHAU Server'},
+            {'name': 'SERVER_PASSWORD', 'description': 'Server password', 'required': False, 'secret': True},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM GAMES - VR
+    # ============================================
+    'pavlovvr': {
+        'name': 'Pavlov VR',
+        'hostname': 'pavlov-server',
+        'description': 'Pavlov VR multiplayer shooter server (LinuxGSM)',
+        'category': 'arena',
+        'deployment_type': 'lxc',
+        'steam_app_id': 622970,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [7777, 8177],
+        'protocol': 'UDP',
+        'tags': ['vr', 'fps', 'steam', 'linuxgsm'],
+        'icon': 'eye',
+        'linuxgsm_name': 'pvrserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Pavlov VR Server'},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM GAMES - Sci-Fi/Horror
+    # ============================================
+    'ns2': {
+        'name': 'Natural Selection 2',
+        'hostname': 'ns2-server',
+        'description': 'Natural Selection 2 asymmetric multiplayer server (LinuxGSM)',
+        'category': 'coop',
+        'deployment_type': 'lxc',
+        'steam_app_id': 4940,
+        'cores': 4,
+        'memory': 4096,
+        'disk_size': 25,
+        'ports': [27015, 27016],
+        'protocol': 'UDP',
+        'tags': ['scifi', 'asymmetric', 'fps', 'steam', 'linuxgsm'],
+        'icon': 'bug',
+        'linuxgsm_name': 'ns2server',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'NS2 Server'},
+        ],
+        'setup_script': None
+    },
+
+    'scpsl': {
+        'name': 'SCP: Secret Laboratory',
+        'hostname': 'scpsl-server',
+        'description': 'SCP: Secret Laboratory multiplayer horror server (LinuxGSM)',
+        'category': 'coop',
+        'deployment_type': 'lxc',
+        'steam_app_id': 996560,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 30,
+        'ports': [7777, 7778],
+        'protocol': 'UDP',
+        'tags': ['horror', 'multiplayer', 'steam', 'linuxgsm'],
+        'icon': 'alert-triangle',
+        'linuxgsm_name': 'scpslserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'SCP:SL Server'},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM GAMES - Survival Additional
+    # ============================================
+    'theisle': {
+        'name': 'The Isle',
+        'hostname': 'theisle-server',
+        'description': 'The Isle dinosaur survival server (LinuxGSM)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 412680,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 30,
+        'ports': [7777, 7778, 27015],
+        'protocol': 'UDP',
+        'tags': ['dinosaur', 'survival', 'steam', 'linuxgsm'],
+        'icon': 'sun',
+        'linuxgsm_name': 'tiserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'The Isle Server'},
+        ],
+        'setup_script': None
+    },
+
+    'eco': {
+        'name': 'Eco',
+        'hostname': 'eco-server',
+        'description': 'Eco global survival game server (LinuxGSM/AMP)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 382310,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 30,
+        'ports': [3000, 3001],
+        'protocol': 'UDP/TCP',
+        'tags': ['survival', 'ecology', 'steam', 'linuxgsm'],
+        'icon': 'globe',
+        'linuxgsm_name': 'ecoserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Eco Server'},
+        ],
+        'setup_script': None
+    },
+
+    'vintagestory': {
+        'name': 'Vintage Story',
+        'hostname': 'vs-server',
+        'description': 'Vintage Story survival sandbox server (LinuxGSM)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [42420],
+        'protocol': 'UDP',
+        'tags': ['survival', 'sandbox', 'linuxgsm'],
+        'icon': 'box',
+        'linuxgsm_name': 'vintsserver',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Vintage Story Server'},
+        ],
+        'setup_script': None
+    },
+
+    'hurtworld': {
+        'name': 'Hurtworld',
+        'hostname': 'hurtworld-server',
+        'description': 'Hurtworld survival FPS server (LinuxGSM)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 405100,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 30,
+        'ports': [12871, 12881],
+        'protocol': 'UDP',
+        'tags': ['survival', 'fps', 'steam', 'linuxgsm'],
+        'icon': 'shield',
+        'linuxgsm_name': 'hwserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Hurtworld Server'},
+        ],
+        'setup_script': None
+    },
+
+    'colony': {
+        'name': 'Colony Survival',
+        'hostname': 'colony-server',
+        'description': 'Colony Survival base building server (LinuxGSM/AMP)',
+        'category': 'sandbox',
+        'deployment_type': 'lxc',
+        'steam_app_id': 366090,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [27016, 27017],
+        'protocol': 'UDP',
+        'tags': ['colony', 'building', 'steam', 'linuxgsm'],
+        'icon': 'home',
+        'linuxgsm_name': 'colserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Colony Survival'},
+        ],
+        'setup_script': None
+    },
+
+    'craftopia': {
+        'name': 'Craftopia',
+        'hostname': 'craftopia-server',
+        'description': 'Craftopia open world survival server (LinuxGSM)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 1307550,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 30,
+        'ports': [6587, 6588],
+        'protocol': 'UDP',
+        'tags': ['survival', 'crafting', 'steam', 'linuxgsm'],
+        'icon': 'hammer',
+        'linuxgsm_name': 'ctserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Craftopia Server'},
+        ],
+        'setup_script': None
+    },
+
+    'empyrion': {
+        'name': 'Empyrion: Galactic Survival',
+        'hostname': 'empyrion-server',
+        'description': 'Empyrion space survival server (AMP)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 530870,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 40,
+        'ports': [30000, 30001],
+        'protocol': 'UDP',
+        'tags': ['space', 'survival', 'steam', 'amp'],
+        'icon': 'rocket',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Empyrion Server'},
+        ],
+        'setup_script': None
+    },
+
+    'cryofall': {
+        'name': 'CryoFall',
+        'hostname': 'cryofall-server',
+        'description': 'CryoFall sci-fi survival colony sim server (AMP)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 829590,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [6000],
+        'protocol': 'UDP/TCP',
+        'tags': ['survival', 'scifi', 'colony', 'steam', 'amp'],
+        'icon': 'snowflake',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'CryoFall Server'},
+        ],
+        'setup_script': None
+    },
+
+    'longvinter': {
+        'name': 'Longvinter',
+        'hostname': 'longvinter-server',
+        'description': 'Longvinter cozy survival server (AMP)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 1628750,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [7777, 27016],
+        'protocol': 'UDP',
+        'tags': ['survival', 'cozy', 'steam', 'amp'],
+        'icon': 'fish',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Longvinter Server'},
+        ],
+        'setup_script': None
+    },
+
+    'risingworld': {
+        'name': 'Rising World',
+        'hostname': 'risingworld-server',
+        'description': 'Rising World open world sandbox server (LinuxGSM)',
+        'category': 'sandbox',
+        'deployment_type': 'lxc',
+        'steam_app_id': 324080,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [4255, 4256, 4257],
+        'protocol': 'UDP/TCP',
+        'tags': ['sandbox', 'building', 'steam', 'linuxgsm'],
+        'icon': 'home',
+        'linuxgsm_name': 'rwserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Rising World Server'},
+        ],
+        'setup_script': None
+    },
+
+    'wurm': {
+        'name': 'Wurm Unlimited',
+        'hostname': 'wurm-server',
+        'description': 'Wurm Unlimited sandbox MMO server (LinuxGSM)',
+        'category': 'sandbox',
+        'deployment_type': 'lxc',
+        'steam_app_id': 366220,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [3724, 3725],
+        'protocol': 'TCP',
+        'tags': ['sandbox', 'mmo', 'steam', 'linuxgsm'],
+        'icon': 'pickaxe',
+        'linuxgsm_name': 'wurmserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Wurm Server'},
+        ],
+        'setup_script': None
+    },
+
+    'astroneer': {
+        'name': 'Astroneer',
+        'hostname': 'astroneer-server',
+        'description': 'Astroneer space exploration server (AMP)',
+        'category': 'sandbox',
+        'deployment_type': 'lxc',
+        'steam_app_id': 728470,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 30,
+        'ports': [8777],
+        'protocol': 'UDP',
+        'tags': ['space', 'exploration', 'steam', 'amp'],
+        'icon': 'moon',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Astroneer Server'},
+        ],
+        'setup_script': None
+    },
+
+    'pathoftitans': {
+        'name': 'Path of Titans',
+        'hostname': 'pot-server',
+        'description': 'Path of Titans dinosaur MMO server (AMP)',
+        'category': 'mmo',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 40,
+        'ports': [7777, 7778],
+        'protocol': 'UDP',
+        'tags': ['dinosaur', 'mmo', 'amp'],
+        'icon': 'sun',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Path of Titans Server'},
+        ],
+        'setup_script': None
+    },
+
+    'ror2': {
+        'name': 'Risk of Rain 2',
+        'hostname': 'ror2-server',
+        'description': 'Risk of Rain 2 dedicated server (AMP)',
+        'category': 'coop',
+        'deployment_type': 'lxc',
+        'steam_app_id': 1180760,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [27015, 27016],
+        'protocol': 'UDP',
+        'tags': ['roguelike', 'coop', 'steam', 'amp'],
+        'icon': 'cloud-rain',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'RoR2 Server'},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM GAMES - Arena & Competitive
+    # ============================================
+    'quake2': {
+        'name': 'Quake 2',
+        'hostname': 'q2-server',
+        'description': 'Quake 2 classic arena server (LinuxGSM)',
+        'category': 'arena',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 1,
+        'memory': 512,
+        'disk_size': 5,
+        'ports': [27910],
+        'protocol': 'UDP',
+        'tags': ['arena', 'fps', 'classic', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'q2server',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Quake 2 Server'},
+        ],
+        'setup_script': None
+    },
+
+    'quakelive': {
+        'name': 'Quake Live',
+        'hostname': 'ql-server',
+        'description': 'Quake Live arena shooter server (LinuxGSM)',
+        'category': 'arena',
+        'deployment_type': 'lxc',
+        'steam_app_id': 349090,
+        'cores': 2,
+        'memory': 2048,
+        'disk_size': 10,
+        'ports': [27960],
+        'protocol': 'UDP',
+        'tags': ['arena', 'fps', 'steam', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'qlserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Quake Live Server'},
+            {'name': 'RCON_PASSWORD', 'description': 'RCON password', 'required': True, 'secret': True},
+        ],
+        'setup_script': None
+    },
+
+    'xonotic': {
+        'name': 'Xonotic',
+        'hostname': 'xonotic-server',
+        'description': 'Xonotic open source arena shooter server (LinuxGSM)',
+        'category': 'arena',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 1024,
+        'disk_size': 5,
+        'ports': [26000],
+        'protocol': 'UDP',
+        'tags': ['arena', 'fps', 'opensource', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'xntserver',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Xonotic Server'},
+        ],
+        'setup_script': None
+    },
+
+    'teeworlds': {
+        'name': 'Teeworlds',
+        'hostname': 'teeworlds-server',
+        'description': 'Teeworlds retro multiplayer shooter server (LinuxGSM)',
+        'category': 'arena',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 1,
+        'memory': 512,
+        'disk_size': 2,
+        'ports': [8303],
+        'protocol': 'UDP',
+        'tags': ['arena', '2d', 'retro', 'linuxgsm'],
+        'icon': 'circle',
+        'linuxgsm_name': 'twserver',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Teeworlds Server'},
+        ],
+        'setup_script': None
+    },
+
+    'soldat': {
+        'name': 'Soldat',
+        'hostname': 'soldat-server',
+        'description': 'Soldat 2D multiplayer shooter server (LinuxGSM)',
+        'category': 'arena',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 1,
+        'memory': 256,
+        'disk_size': 2,
+        'ports': [23073, 23083],
+        'protocol': 'UDP',
+        'tags': ['arena', '2d', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'solserver',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Soldat Server'},
+        ],
+        'setup_script': None
+    },
+
+    'ut3': {
+        'name': 'Unreal Tournament 3',
+        'hostname': 'ut3-server',
+        'description': 'Unreal Tournament 3 dedicated server (LinuxGSM)',
+        'category': 'arena',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 2048,
+        'disk_size': 15,
+        'ports': [7777, 7778, 6500],
+        'protocol': 'UDP',
+        'tags': ['arena', 'fps', 'linuxgsm'],
+        'icon': 'crosshair',
+        'linuxgsm_name': 'ut3server',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'UT3 Server'},
+        ],
+        'setup_script': None
+    },
+
+    'towerunite': {
+        'name': 'Tower Unite',
+        'hostname': 'tu-server',
+        'description': 'Tower Unite social platform server (LinuxGSM)',
+        'category': 'coop',
+        'deployment_type': 'lxc',
+        'steam_app_id': 439660,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 30,
+        'ports': [27015, 27016],
+        'protocol': 'UDP',
+        'tags': ['social', 'minigames', 'steam', 'linuxgsm'],
+        'icon': 'home',
+        'linuxgsm_name': 'tuserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Tower Unite Server'},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM/AMP GAMES - GTA Multiplayer
+    # ============================================
+    'mta': {
+        'name': 'Multi Theft Auto',
+        'hostname': 'mta-server',
+        'description': 'Multi Theft Auto: San Andreas server (LinuxGSM)',
+        'category': 'roleplay',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 2048,
+        'disk_size': 10,
+        'ports': [22003, 22005, 22126],
+        'protocol': 'UDP',
+        'tags': ['gta', 'multiplayer', 'linuxgsm'],
+        'icon': 'truck',
+        'linuxgsm_name': 'mtaserver',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'MTA Server'},
+        ],
+        'setup_script': None
+    },
+
+    'ragemp': {
+        'name': 'RAGE:MP',
+        'hostname': 'ragemp-server',
+        'description': 'RAGE Multiplayer GTA V server (AMP)',
+        'category': 'roleplay',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 50,
+        'ports': [22005, 22006],
+        'protocol': 'UDP',
+        'tags': ['gta', 'multiplayer', 'amp'],
+        'icon': 'truck',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'RAGE:MP Server'},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM GAMES - Voice Communication
+    # ============================================
+    'teamspeak3': {
+        'name': 'TeamSpeak 3',
+        'hostname': 'ts3-server',
+        'description': 'TeamSpeak 3 voice communication server (LinuxGSM)',
+        'category': 'voice',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 1,
+        'memory': 512,
+        'disk_size': 5,
+        'ports': [9987, 10011, 30033],
+        'protocol': 'UDP/TCP',
+        'tags': ['voice', 'communication', 'linuxgsm'],
+        'icon': 'mic',
+        'linuxgsm_name': 'ts3server',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [],
+        'setup_script': None
+    },
+
+    # ============================================
+    # LINUXGSM/AMP GAMES - Racing Additional
+    # ============================================
+    'beammp': {
+        'name': 'BeamMP',
+        'hostname': 'beammp-server',
+        'description': 'BeamNG.drive multiplayer server (AMP)',
+        'category': 'racing',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [30814],
+        'protocol': 'UDP/TCP',
+        'tags': ['racing', 'simulation', 'physics', 'amp'],
+        'icon': 'car',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'BeamMP Server'},
+            {'name': 'AUTH_KEY', 'description': 'BeamMP auth key', 'required': True, 'secret': True},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # AMP GAMES - Additional Survival
+    # ============================================
+    'frozenflame': {
+        'name': 'Frozen Flame',
+        'hostname': 'frozenflame-server',
+        'description': 'Frozen Flame survival ARPG server (AMP)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 1357640,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 30,
+        'ports': [7777, 27015],
+        'protocol': 'UDP',
+        'tags': ['survival', 'arpg', 'steam', 'amp'],
+        'icon': 'flame',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Frozen Flame Server'},
+        ],
+        'setup_script': None
+    },
+
+    'nightofthedead': {
+        'name': 'Night of the Dead',
+        'hostname': 'notd-server',
+        'description': 'Night of the Dead zombie survival server (AMP)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 1377380,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 30,
+        'ports': [7777, 27016],
+        'protocol': 'UDP',
+        'tags': ['survival', 'zombie', 'steam', 'amp'],
+        'icon': 'moon',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'NOTD Server'},
+        ],
+        'setup_script': None
+    },
+
+    'noonesurvived': {
+        'name': 'No One Survived',
+        'hostname': 'nos-server',
+        'description': 'No One Survived apocalypse survival server (AMP)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 1963370,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 30,
+        'ports': [7777, 27015],
+        'protocol': 'UDP',
+        'tags': ['survival', 'apocalypse', 'steam', 'amp'],
+        'icon': 'skull',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'No One Survived Server'},
+        ],
+        'setup_script': None
+    },
+
+    'lastoasis': {
+        'name': 'Last Oasis',
+        'hostname': 'lastoasis-server',
+        'description': 'Last Oasis nomadic survival MMO server (AMP)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 920720,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 40,
+        'ports': [5555, 5556],
+        'protocol': 'UDP',
+        'tags': ['survival', 'mmo', 'steam', 'amp'],
+        'icon': 'sun',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Last Oasis Server'},
+        ],
+        'setup_script': None
+    },
+
+    'mythofempires': {
+        'name': 'Myth of Empires',
+        'hostname': 'moe-server',
+        'description': 'Myth of Empires sandbox MMO server (AMP)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 1371580,
+        'cores': 4,
+        'memory': 16384,
+        'disk_size': 50,
+        'ports': [12888, 12889],
+        'protocol': 'UDP',
+        'tags': ['survival', 'mmo', 'sandbox', 'steam', 'amp'],
+        'icon': 'sword',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Myth of Empires Server'},
+        ],
+        'setup_script': None
+    },
+
+    'pixark': {
+        'name': 'PixARK',
+        'hostname': 'pixark-server',
+        'description': 'PixARK voxel survival server (AMP)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 824360,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 30,
+        'ports': [7777, 27015],
+        'protocol': 'UDP',
+        'tags': ['survival', 'voxel', 'dinosaur', 'steam', 'amp'],
+        'icon': 'box',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'PixARK Server'},
+        ],
+        'setup_script': None
+    },
+
+    'nightingale': {
+        'name': 'Nightingale',
+        'hostname': 'nightingale-server',
+        'description': 'Nightingale gaslamp fantasy survival server (AMP)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 1928980,
+        'cores': 4,
+        'memory': 16384,
+        'disk_size': 50,
+        'ports': [7777, 27015],
+        'protocol': 'UDP',
+        'tags': ['survival', 'fantasy', 'steam', 'amp'],
+        'icon': 'moon',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Nightingale Server'},
+        ],
+        'setup_script': None
+    },
+
+    'thefront': {
+        'name': 'The Front',
+        'hostname': 'thefront-server',
+        'description': 'The Front survival shooter server (LinuxGSM)',
+        'category': 'survival',
+        'deployment_type': 'lxc',
+        'steam_app_id': 2285150,
+        'cores': 4,
+        'memory': 8192,
+        'disk_size': 40,
+        'ports': [25010, 25011],
+        'protocol': 'UDP',
+        'tags': ['survival', 'shooter', 'steam', 'linuxgsm'],
+        'icon': 'shield',
+        'linuxgsm_name': 'tfserver',
+        'docker_image': 'cm2network/steamcmd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'The Front Server'},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # AMP/LINUXGSM GAMES - Open Source & Misc
+    # ============================================
+    'openttd': {
+        'name': 'OpenTTD',
+        'hostname': 'openttd-server',
+        'description': 'OpenTTD transport simulation server (AMP)',
+        'category': 'sandbox',
+        'deployment_type': 'lxc',
+        'steam_app_id': 1536610,
+        'cores': 1,
+        'memory': 1024,
+        'disk_size': 5,
+        'ports': [3979],
+        'protocol': 'TCP/UDP',
+        'tags': ['simulation', 'transport', 'opensource', 'amp'],
+        'icon': 'train',
+        'docker_image': 'bateau/openttd',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'OpenTTD Server'},
+        ],
+        'setup_script': None
+    },
+
+    'minetest': {
+        'name': 'Minetest',
+        'hostname': 'minetest-server',
+        'description': 'Minetest open source voxel game server (AMP)',
+        'category': 'sandbox',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 2048,
+        'disk_size': 10,
+        'ports': [30000],
+        'protocol': 'UDP',
+        'tags': ['sandbox', 'voxel', 'opensource', 'amp'],
+        'icon': 'box',
+        'docker_image': 'linuxserver/minetest',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Minetest Server'},
+        ],
+        'setup_script': None
+    },
+
+    'mindustry': {
+        'name': 'Mindustry',
+        'hostname': 'mindustry-server',
+        'description': 'Mindustry factory/tower defense server (AMP)',
+        'category': 'sandbox',
+        'deployment_type': 'lxc',
+        'steam_app_id': 1127400,
+        'cores': 2,
+        'memory': 2048,
+        'disk_size': 10,
+        'ports': [6567],
+        'protocol': 'TCP/UDP',
+        'tags': ['factory', 'defense', 'opensource', 'amp'],
+        'icon': 'factory',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'Mindustry Server'},
+        ],
+        'setup_script': None
+    },
+
+    'rimworldtogether': {
+        'name': 'Rimworld Together',
+        'hostname': 'rwt-server',
+        'description': 'Rimworld Together multiplayer mod server (AMP)',
+        'category': 'coop',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 20,
+        'ports': [25555],
+        'protocol': 'TCP',
+        'tags': ['colony', 'multiplayer', 'mod', 'amp'],
+        'icon': 'users',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'RWT Server'},
+        ],
+        'setup_script': None
+    },
+
+    # ============================================
+    # SERVER MANAGEMENT - LinuxGSM Integration
+    # ============================================
+    'linuxgsm': {
+        'name': 'LinuxGSM',
+        'hostname': 'linuxgsm',
+        'description': 'LinuxGSM game server management (139 games supported)',
+        'category': 'management',
+        'deployment_type': 'lxc',
+        'steam_app_id': None,
+        'cores': 2,
+        'memory': 4096,
+        'disk_size': 50,
+        'ports': [],
+        'protocol': 'TCP',
+        'tags': ['management', 'linuxgsm', 'multi-game'],
+        'icon': 'terminal',
+        'privileged': False,
+        'nesting': True,
+        'env_vars': [
+            {'name': 'GAME_SERVER', 'description': 'Game server shortname (e.g., csgoserver, tf2server)', 'required': True},
+        ],
         'setup_script': None
     },
 }

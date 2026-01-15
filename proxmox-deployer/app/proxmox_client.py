@@ -11,6 +11,13 @@ from proxmoxer import ProxmoxAPI
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+# Try to import paramiko for SSH provisioning
+try:
+    import paramiko
+    HAS_PARAMIKO = True
+except ImportError:
+    HAS_PARAMIKO = False
+
 
 class ProxmoxClient:
     """Client for interacting with Proxmox VE API."""
@@ -376,3 +383,164 @@ class ProxmoxClient:
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
+
+    def provision_container(self, node: str, vmid: int, script: str, timeout: int = 600) -> Dict[str, Any]:
+        """
+        Provision an LXC container by running an installation script inside it.
+
+        Uses SSH to connect to the Proxmox host and runs 'pct exec' to execute
+        the script inside the container.
+
+        Args:
+            node: Proxmox node name
+            vmid: Container VMID
+            script: Bash script to execute inside the container
+            timeout: SSH command timeout in seconds
+
+        Returns:
+            Dict with success status and output/error
+        """
+        if not HAS_PARAMIKO:
+            return {
+                'success': False,
+                'error': 'paramiko not installed. Run: pip install paramiko'
+            }
+
+        if not self.connection.password:
+            return {
+                'success': False,
+                'error': 'Password authentication required for provisioning. API tokens cannot use SSH.'
+            }
+
+        try:
+            # Connect to Proxmox host via SSH
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(
+                hostname=self.connection.host,
+                port=22,
+                username=self.connection.username.split('@')[0],  # Remove @pam, @pve suffix
+                password=self.connection.password,
+                timeout=30
+            )
+
+            # Write script to a temp file on the Proxmox host
+            script_path = f'/tmp/provision_{vmid}.sh'
+            sftp = ssh.open_sftp()
+            with sftp.file(script_path, 'w') as f:
+                f.write(script)
+            sftp.close()
+
+            # Make script executable
+            ssh.exec_command(f'chmod +x {script_path}')
+
+            # Copy script into container
+            stdin, stdout, stderr = ssh.exec_command(
+                f'pct push {vmid} {script_path} /tmp/provision.sh',
+                timeout=60
+            )
+            stdout.read()  # Wait for completion
+
+            # Execute script inside the container using pct exec
+            # Use bash -c to run the script
+            stdin, stdout, stderr = ssh.exec_command(
+                f'pct exec {vmid} -- bash /tmp/provision.sh',
+                timeout=timeout
+            )
+
+            output = stdout.read().decode('utf-8', errors='replace')
+            error = stderr.read().decode('utf-8', errors='replace')
+            exit_code = stdout.channel.recv_exit_status()
+
+            # Cleanup temp script on host
+            ssh.exec_command(f'rm -f {script_path}')
+            ssh.close()
+
+            if exit_code == 0:
+                return {
+                    'success': True,
+                    'output': output,
+                    'exit_code': exit_code
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': error or output,
+                    'output': output,
+                    'exit_code': exit_code
+                }
+
+        except paramiko.AuthenticationException:
+            return {
+                'success': False,
+                'error': 'SSH authentication failed. Check username/password.'
+            }
+        except paramiko.SSHException as e:
+            return {
+                'success': False,
+                'error': f'SSH error: {str(e)}'
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Provisioning failed: {str(e)}'
+            }
+
+    def exec_in_container(self, node: str, vmid: int, command: str, timeout: int = 60) -> Dict[str, Any]:
+        """
+        Execute a single command inside an LXC container.
+
+        Args:
+            node: Proxmox node name
+            vmid: Container VMID
+            command: Command to execute
+
+        Returns:
+            Dict with success status and output/error
+        """
+        if not HAS_PARAMIKO:
+            return {
+                'success': False,
+                'error': 'paramiko not installed. Run: pip install paramiko'
+            }
+
+        if not self.connection.password:
+            return {
+                'success': False,
+                'error': 'Password authentication required. API tokens cannot use SSH.'
+            }
+
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(
+                hostname=self.connection.host,
+                port=22,
+                username=self.connection.username.split('@')[0],
+                password=self.connection.password,
+                timeout=30
+            )
+
+            stdin, stdout, stderr = ssh.exec_command(
+                f'pct exec {vmid} -- {command}',
+                timeout=timeout
+            )
+
+            output = stdout.read().decode('utf-8', errors='replace')
+            error = stderr.read().decode('utf-8', errors='replace')
+            exit_code = stdout.channel.recv_exit_status()
+
+            ssh.close()
+
+            return {
+                'success': exit_code == 0,
+                'output': output,
+                'error': error if exit_code != 0 else None,
+                'exit_code': exit_code
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }

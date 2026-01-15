@@ -48,7 +48,7 @@ case "$MODE" in
         pip install -q -r requirements.txt
 
         echo -e "${GREEN}Starting Flask development server...${NC}"
-        echo -e "${YELLOW}Access the deployer at: http://localhost:5000${NC}"
+        echo -e "${YELLOW}Access the deployer at: http://localhost:5555${NC}"
         echo ""
 
         export FLASK_APP=run.py
@@ -77,11 +77,11 @@ case "$MODE" in
         pip install -q -r requirements.txt
 
         echo -e "${GREEN}Starting Gunicorn server...${NC}"
-        echo -e "${YELLOW}Access the deployer at: http://localhost:5000${NC}"
+        echo -e "${YELLOW}Access the deployer at: http://localhost:5555${NC}"
         echo ""
 
         export FLASK_ENV=production
-        gunicorn --bind 0.0.0.0:5000 --workers 2 run:app
+        gunicorn --bind 0.0.0.0:5555 --workers 2 run:app
         ;;
 
     docker)
@@ -95,7 +95,7 @@ case "$MODE" in
         docker compose up --build -d
 
         echo -e "${GREEN}Container started!${NC}"
-        echo -e "${YELLOW}Access the deployer at: http://localhost:5000${NC}"
+        echo -e "${YELLOW}Access the deployer at: http://localhost:5555${NC}"
         echo ""
         echo "View logs: docker compose logs -f"
         echo "Stop: docker compose down"

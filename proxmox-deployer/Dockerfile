@@ -21,11 +21,11 @@ ENV FLASK_ENV=production
 ENV DATABASE_URL=sqlite:////data/deployer.db
 
 # Expose port
-EXPOSE 5000
+EXPOSE 5555
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/ || exit 1
+    CMD curl -f http://localhost:5555/ || exit 1
 
 # Run with gunicorn in production
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "run:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5555", "--workers", "2", "run:app"]
