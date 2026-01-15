@@ -1,175 +1,399 @@
 # Silverware Game Server Deployer
 
-A web-based interface for deploying game servers to Proxmox VE with one-click simplicity.
+<div align="center">
+
+**One-Click Game Server Deployment to Proxmox VE**
+
+[![Games](https://img.shields.io/badge/Games-75+-blue?style=for-the-badge)](https://github.com/sp00nznet/gameservers)
+[![Categories](https://img.shields.io/badge/Categories-11-green?style=for-the-badge)](https://github.com/sp00nznet/gameservers)
+[![Python](https://img.shields.io/badge/Python-3.8+-yellow?style=for-the-badge&logo=python)](https://python.org)
+[![Proxmox](https://img.shields.io/badge/Proxmox-7.0+-orange?style=for-the-badge)](https://proxmox.com)
+
+*Deploy game servers as LXC containers or VMs with a beautiful dark-themed web interface*
+
+</div>
+
+---
+
+## What's This?
+
+A Flask-based web application that lets you deploy game servers to your Proxmox cluster with just a few clicks. No more manually configuring VMs, installing dependencies, or hunting for documentation.
+
+**Pick a game. Click deploy. Play.**
+
+---
+
+## Supported Games (75+)
+
+### Source Engine (11 games)
+| Game | Players | Description |
+|------|---------|-------------|
+| Counter-Strike 2 | 16 | The latest in tactical FPS gaming |
+| Counter-Strike 1.6 | 32 | The classic that started it all |
+| Team Fortress 2 | 24 | Free-to-play class-based shooter |
+| Garry's Mod | 24 | Physics sandbox with endless mods |
+| Left 4 Dead 2 | 8 | Co-op zombie survival shooter |
+| Black Mesa | 16 | Half-Life reimagined |
+| Half-Life 2: DM | 16 | Gravity gun chaos |
+| Half-Life DM | 16 | Original arena combat |
+| Team Fortress Classic | 24 | The OG team shooter |
+| Sven Co-op | 12 | Cooperative Half-Life |
+| Synergy | 8 | Co-op HL2 gameplay |
+
+### Survival Games (22 games)
+| Game | Players | Description |
+|------|---------|-------------|
+| Rust | 50+ | Brutal PvP survival |
+| Valheim | 10 | Viking exploration & building |
+| 7 Days to Die | 8 | Zombie survival with horde nights |
+| Project Zomboid | 16 | Isometric zombie apocalypse |
+| Palworld | 32 | Pokemon meets survival crafting |
+| Enshrouded | 16 | Action RPG survival |
+| V Rising | 40 | Vampire survival builder |
+| Conan Exiles | 40 | Brutal open-world survival |
+| ARK: Survival Ascended | 70 | Dinosaur taming & survival |
+| DayZ | 60 | Hardcore zombie survival |
+| Sons of the Forest | 8 | Survival horror sequel |
+| The Forest | 8 | Survival horror original |
+| SCUM | 64 | Open-world prison survival |
+| Barotrauma | 16 | Submarine crew survival |
+| Icarus | 8 | Session-based planet survival |
+| Core Keeper | 8 | Mining sandbox RPG |
+| Necesse | 10 | Action RPG survival |
+| Soulmask | 50 | Tribal survival crafting |
+| Unturned | 24 | Blocky zombie survival |
+| Abiotic Factor | 6 | Cooperative sci-fi survival |
+| HumanitZ | 32 | Open-world zombie survival |
+| Don't Starve Together | 6 | Whimsical survival |
+
+### Military Simulation (7 games)
+| Game | Players | Description |
+|------|---------|-------------|
+| ARMA 3 | 64+ | Ultimate military sandbox |
+| Arma Reforger | 128 | Next-gen Arma engine |
+| Squad | 100 | Tactical 50v50 warfare |
+| Hell Let Loose | 100 | WW2 combined arms |
+| Insurgency: Sandstorm | 28 | Modern tactical shooter |
+| Post Scriptum | 80 | WW2 realistic combat |
+| DayZ | 60 | Post-apocalyptic survival |
+
+### Sandbox & Building (10 games)
+| Game | Players | Description |
+|------|---------|-------------|
+| Minecraft Java | 20+ | The sandbox phenomenon |
+| Minecraft Bedrock | 10+ | Cross-platform Minecraft |
+| Terraria | 8 | 2D action-adventure sandbox |
+| Starbound | 8 | Space exploration sandbox |
+| Factorio | Varies | Factory automation |
+| Satisfactory | 4 | 3D factory building |
+| Space Engineers | 16+ | Space construction |
+| Stationeers | 10 | Space station simulation |
+| Avorion | 10 | Space sandbox building |
+| Unturned | 24 | Blocky survival sandbox |
+
+### Racing & Simulation (4 games)
+| Game | Players | Description |
+|------|---------|-------------|
+| Assetto Corsa | 24 | Racing simulation king |
+| Assetto Corsa Competizione | 30 | GT racing simulator |
+| Euro Truck Simulator 2 | 8 | European trucking |
+| American Truck Simulator | 8 | American trucking |
+
+### Roleplay (3 games)
+| Game | Players | Description |
+|------|---------|-------------|
+| FiveM | 32-2048 | GTA V roleplay platform |
+| alt:V | 128+ | Alternative GTA V multiplayer |
+| RedM | 32+ | RDR2 roleplay platform |
+
+### Classic Games (8 games)
+| Game | Players | Description |
+|------|---------|-------------|
+| Killing Floor 2 | 6 | Zombie wave survival |
+| Killing Floor | 6 | Original zombie waves |
+| Unreal Tournament 2004 | 16 | Arena FPS classic |
+| Unreal Tournament 99 | 16 | The original UT |
+| SA-MP | 50+ | GTA San Andreas MP |
+| Quake III Arena | 16 | Arena FPS legend |
+| Dota 2 | 10 | Custom lobby/tournament |
+| Marvel Rivals | Varies | Hero shooter customs |
+
+### MMO Emulators (3 servers)
+| Game | Description |
+|------|-------------|
+| AzerothCore | WoW 3.3.5a private server |
+| SWGEmu | Star Wars Galaxies Pre-CU |
+| City of Heroes | Superhero MMO emulator |
+
+### Server Management (4 panels)
+| Panel | Description |
+|-------|-------------|
+| Pterodactyl | Multi-game server panel |
+| Crafty Controller | Minecraft management |
+| AMP | CubeCoders management |
+| Foundry VTT | Virtual tabletop |
+
+---
 
 ## Features
 
-- **40+ Pre-configured Game Servers** across 8 categories
-- **One-click Deployment** to Proxmox LXC containers or VMs
-- **Dark-themed Web UI** with responsive design
-- **Credentials Vault** for storing Steam tokens, passwords, and SSH keys
-- **Deployment History** with status tracking and management
-- **Multi-connection Support** for multiple Proxmox servers
+### One-Click Deployment
+Select your game, configure basic settings, and deploy. The system handles template selection, resource allocation, and service configuration automatically.
 
-## Game Server Categories
+### Smart Resource Allocation
+Each game has pre-configured CPU, memory, and disk requirements based on real-world testing. No more guessing about specifications.
 
-| Category | Games | Description |
-|----------|-------|-------------|
-| Source Engine | CS 1.6, CS2, TF2, GMod, L4D2 | Valve Source/GoldSrc engine games |
-| Survival | Valheim, Rust, 7DTD, PZ, Palworld | Survival and crafting games |
-| Sandbox | Minecraft, Terraria, Factorio, Satisfactory | Building and automation |
-| Classic | Killing Floor, UT99, UT2004, Quake 3 | Classic FPS and arena shooters |
-| MMO Emulators | AzerothCore (WoW), SWGEmu | Private server emulators |
-| Management | Pterodactyl, Crafty, AMP | Server management panels |
-| RPG & Tabletop | Foundry VTT | Virtual tabletop platforms |
-| Windows | City of Heroes | Windows-only game servers |
+### Credentials Vault
+Securely store:
+- Steam Game Server Login Tokens (GSLT)
+- Admin passwords
+- SSH keys
+- Database credentials
+
+### Deployment Types
+
+| Type | Best For | Technology |
+|------|----------|------------|
+| **LXC Container** | Most games | Lightweight Linux containers with Docker |
+| **VM (Proton)** | Windows games on Linux | Full VM with Proton/Wine |
+| **VM (Windows)** | Windows-only games | Windows Server with auto-setup |
+| **VM (Compiled)** | Emulators | Build toolchain + database |
+
+### Dark Theme UI
+Modern, responsive interface built with Bootstrap 5. Works on desktop and mobile.
+
+---
 
 ## Quick Start
 
 ### Option 1: Development Mode
 ```bash
+cd proxmox-deployer
 ./start.sh dev
 ```
 
 ### Option 2: Production Mode
 ```bash
+cd proxmox-deployer
 ./start.sh prod
 ```
 
 ### Option 3: Docker
 ```bash
+cd proxmox-deployer
 ./start.sh docker
 ```
 
-Access the deployer at: **http://localhost:5000**
+Access at: **http://localhost:5000**
 
-## Requirements
-
-- **Python 3.8+** (for native installation)
-- **Docker** (for containerized deployment)
-- **Proxmox VE 7.0+** or **8.0+**
-- Network access to Proxmox API (port 8006)
-
-## Configuration
-
-1. Copy `.env.example` to `.env`
-2. Set a secure `SECRET_KEY` for production
-3. Configure your database URL if not using SQLite
-
-```bash
-cp .env.example .env
-# Edit .env with your settings
-```
+---
 
 ## First-Time Setup
 
-1. Start the deployer using one of the methods above
-2. Navigate to **Settings** in the web UI
-3. Add your Proxmox connection:
-   - Connection name
-   - Proxmox host/IP and port (default: 8006)
-   - Username (e.g., `root@pam`)
-   - Password or API token
-4. Test the connection
-5. Browse **Game Servers** and deploy!
+1. **Start the deployer** using any method above
+2. **Navigate to Settings**
+3. **Add your Proxmox connection:**
+   - Name: `My Proxmox`
+   - Host: `192.168.1.100` (your Proxmox IP)
+   - Port: `8006`
+   - Username: `root@pam`
+   - Authentication: Password or API Token
+4. **Test the connection**
+5. **Browse Game Servers and deploy!**
+
+---
+
+## Requirements
+
+### For the Deployer
+- Python 3.8+ (native) or Docker
+- Network access to Proxmox API (port 8006)
+
+### For Proxmox
+- Proxmox VE 7.0+ or 8.0+
+- LXC templates (Ubuntu 22.04 recommended)
+- VM templates (for Windows/Proton games)
+- Sufficient storage and compute resources
+
+### Recommended Resources
+
+| Server Type | Min CPU | Min RAM | Min Disk |
+|-------------|---------|---------|----------|
+| Source Engine | 2 cores | 2 GB | 20 GB |
+| Survival (small) | 2 cores | 4 GB | 20 GB |
+| Survival (large) | 4 cores | 16 GB | 50 GB |
+| Military Sim | 4 cores | 8 GB | 50 GB |
+| Minecraft | 4 cores | 8 GB | 30 GB |
+| ARK/Large Games | 6 cores | 32 GB | 100 GB |
+| MMO Emulators | 8 cores | 16 GB | 100 GB |
+
+---
+
+## API Reference
+
+### Connections
+```
+GET    /api/connections              # List all
+POST   /api/connections              # Create new
+PUT    /api/connections/<id>         # Update
+DELETE /api/connections/<id>         # Delete
+POST   /api/connections/<id>/test    # Test connection
+GET    /api/connections/<id>/nodes   # Get nodes
+```
+
+### Deployments
+```
+GET    /api/deployments              # List all
+POST   /api/deploy                   # Deploy server
+GET    /api/deployments/<id>         # Get details
+POST   /api/deployments/<id>/start   # Start server
+POST   /api/deployments/<id>/stop    # Stop server
+DELETE /api/deployments/<id>         # Delete
+```
+
+### Servers
+```
+GET    /api/servers                  # List all games
+GET    /api/servers?category=source  # Filter by category
+GET    /api/servers/<key>            # Get game details
+GET    /api/categories               # List categories
+GET    /api/stats                    # Statistics
+```
+
+---
 
 ## Project Structure
 
 ```
 proxmox-deployer/
 ├── app/
-│   ├── __init__.py          # Flask application factory
+│   ├── __init__.py          # Flask app factory
 │   ├── models.py            # Database models
-│   ├── routes.py            # Flask routes and API endpoints
-│   ├── proxmox_client.py    # Proxmox API client
-│   ├── game_servers.py      # Game server definitions
+│   ├── routes.py            # Web routes & API
+│   ├── proxmox_client.py    # Proxmox VE API client
+│   ├── game_servers.py      # 75+ game definitions
+│   ├── static/              # CSS, JS, images
 │   └── templates/           # Jinja2 HTML templates
-├── run.py                   # Application entry point
-├── config.py                # Configuration classes
-├── requirements.txt         # Python dependencies
-├── Dockerfile               # Container image definition
-├── docker-compose.yml       # Docker Compose config
-├── start.sh                 # Startup script
-└── stop.sh                  # Shutdown script
+├── run.py                   # Application entry
+├── config.py                # Configuration
+├── requirements.txt         # Dependencies
+├── Dockerfile               # Container build
+├── docker-compose.yml       # Docker setup
+├── start.sh                 # Start script
+└── stop.sh                  # Stop script
 ```
 
-## API Endpoints
+---
 
-### Connections
-- `GET /api/connections` - List all connections
-- `POST /api/connections` - Create connection
-- `PUT /api/connections/<id>` - Update connection
-- `DELETE /api/connections/<id>` - Delete connection
-- `POST /api/connections/<id>/test` - Test connection
-- `GET /api/connections/<id>/nodes` - Get available nodes
-- `GET /api/connections/<id>/nodes/<node>/templates` - Get templates
-- `GET /api/connections/<id>/nodes/<node>/storage` - Get storage pools
-- `GET /api/connections/<id>/nodes/<node>/networks` - Get network bridges
+## Configuration
 
-### Deployments
-- `GET /api/deployments` - List all deployments
-- `POST /api/deploy` - Deploy a game server
-- `GET /api/deployments/<id>` - Get deployment details
-- `POST /api/deployments/<id>/start` - Start server
-- `POST /api/deployments/<id>/stop` - Stop server
-- `GET /api/deployments/<id>/status` - Get current status
-- `DELETE /api/deployments/<id>` - Delete deployment
+### Environment Variables
 
-### Servers
-- `GET /api/servers` - List all game servers
-- `GET /api/servers/<key>` - Get server definition
-- `GET /api/categories` - List categories
-- `GET /api/stats` - Get statistics
+```bash
+# Required for production
+SECRET_KEY=your-secure-random-key
 
-## Technology Stack
+# Optional
+DATABASE_URL=sqlite:///data/deployer.db
+FLASK_ENV=production
+```
 
-- **Backend**: Flask (Python)
-- **Database**: SQLAlchemy with SQLite
-- **Frontend**: Bootstrap 5, Bootstrap Icons
-- **Proxmox API**: proxmoxer library
-- **Production Server**: Gunicorn
+### .env File
+```bash
+cp .env.example .env
+# Edit with your settings
+```
 
-## Deployment Types
-
-### LXC Containers
-Lightweight Linux containers for Docker-based game servers. Most efficient for:
-- Source engine games
-- Minecraft (Java/Bedrock)
-- Most survival games
-- Management panels
-
-### Virtual Machines
-Full VMs for games requiring:
-- Proton/Wine compatibility (ARK ASA)
-- Compiled server software (WoW, SWGEmu)
-- Windows-only games (City of Heroes)
+---
 
 ## Security Notes
 
 - Use API tokens instead of passwords when possible
 - Generate a secure `SECRET_KEY` for production
-- Credentials are stored encrypted in the database
-- SSL verification is optional but recommended
+- SSL verification is optional for self-signed certs
+- Credentials are stored in SQLite (consider encryption)
+- Never expose the deployer to the public internet without authentication
+
+---
 
 ## Troubleshooting
 
 ### Connection Failed
-- Verify Proxmox host and port are correct
-- Check firewall allows access to port 8006
-- Ensure API user has appropriate permissions
-- Try disabling SSL verification for self-signed certs
+- Verify Proxmox host and port
+- Check firewall allows port 8006
+- Ensure user has API permissions
+- Try disabling SSL verification
 
 ### Deployment Failed
-- Check storage pool has sufficient space
-- Verify template exists on target node
-- Review Proxmox task logs for details
+- Check storage pool has space
+- Verify template exists
+- Review Proxmox task logs
 - Ensure network bridge exists
 
 ### Container Won't Start
-- Check resource allocation (memory, CPU)
-- Verify network configuration
-- Review container logs via Proxmox console
+- Check resource allocation
+- Verify network config
+- Review container logs in Proxmox
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Add new games to `app/game_servers.py`
+3. Test deployment
+4. Submit pull request
+
+### Adding a New Game
+
+```python
+'mygame': {
+    'name': 'My Game',
+    'hostname': 'mygame-server',
+    'description': 'Description here',
+    'category': 'survival',  # Match existing category
+    'deployment_type': 'lxc',  # or 'vm'
+    'steam_app_id': 123456,
+    'cores': 2,
+    'memory': 4096,
+    'disk_size': 20,
+    'ports': [27015],
+    'protocol': 'UDP',
+    'tags': ['survival', 'coop'],
+    'icon': 'shield',
+    'docker_image': 'cm2network/steamcmd',
+    'env_vars': [
+        {'name': 'SERVER_NAME', 'description': 'Server name', 'default': 'My Server'},
+    ],
+}
+```
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Backend | Flask (Python) |
+| Database | SQLAlchemy + SQLite |
+| Frontend | Bootstrap 5 + Icons |
+| Proxmox API | proxmoxer |
+| Production Server | Gunicorn |
+| Containers | Docker |
+
+---
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT License - See LICENSE file
+
+---
+
+<div align="center">
+
+**Built for gamers, by gamers.**
+
+[Report Issue](https://github.com/sp00nznet/gameservers/issues) |
+[Request Game](https://github.com/sp00nznet/gameservers/issues)
+
+</div>
