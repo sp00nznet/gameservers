@@ -5,141 +5,73 @@ Terraform/Packer templates for running the same servers without it.
 
 ## Status
 
-**v0.1.0, alpha.** The web deployer's catalog lists 217 servers. 72 of them have an install script, so
-the deployer creates the container *and* installs the game. The other 145 get a container sized for the
-game and you install the game yourself. Every catalog entry deploys as an LXC container; VM deployment
-exists in the code but no catalog entry uses it yet. See [docs/games.md](docs/games.md) for which is which.
-
-The web UI has **no login**. Run it on a trusted network only; see [SECURITY.md](SECURITY.md).
+**v0.1.0, alpha.** 217 games in the catalog; 72 install themselves after deploy, the rest get a
+container sized for the game ([full list](docs/games.md)). LXC only for now. The web UI has **no
+login**, so keep it on a trusted network ([SECURITY.md](SECURITY.md)).
 
 ## Screenshots
 
-| Dashboard | Deploying a server |
+| Dashboard | Game catalog |
 |---|---|
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Deploy page](docs/screenshots/deploy.png) |
-
-![Game catalog](docs/screenshots/servers.png)
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Game catalog](docs/screenshots/servers.png) |
+| **Deploying a server** | **Proxmox connections** |
+| ![Deploy form](docs/screenshots/deploy.png) | ![Settings](docs/screenshots/settings.png) |
 
 ## Getting Started
 
-You need a Proxmox VE 7 or 8 host that you can reach on port 8006 (API) and port 22 (SSH; the deployer
-runs the install script inside the container through `pct exec`). You also need an LXC template on that
-host, for example Debian 12 or Ubuntu 22.04 (download it in the Proxmox UI: *local → CT Templates →
-Templates*).
+You need a Proxmox VE 7 or 8 host reachable on ports 8006 and 22, with an LXC template downloaded.
 
-### Quick start (Docker)
+**Quick start (Docker):**
 
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop) (Windows/macOS) or Docker
-   Engine (Linux), and start it.
-2. Download this repo ([zip](https://github.com/sp00nznet/gameservers/archive/refs/heads/main.zip)) and
-   unzip it.
-3. Start the deployer:
-   - **Windows:** double-click `proxmox-deployer\start.bat`.
-   - **Linux/macOS:** run `./proxmox-deployer/start.sh docker`.
-4. Open <http://localhost:5555>. You should see the dashboard above, with "217 Available Servers".
+1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop).
+2. Download the [zip](https://github.com/sp00nznet/gameservers/archive/refs/heads/main.zip) and unzip it.
+3. Double-click `proxmox-deployer\start.bat` (Linux/macOS: `./proxmox-deployer/start.sh docker`).
+4. Open <http://localhost:5555>. The dashboard shows "217 Available Servers".
 
-The first start builds the image, which takes a minute or two. To stop it, run `stop.bat` or
-`docker compose down` in `proxmox-deployer/`.
-
-### Step by step (Python)
-
-Prerequisites: Python 3.10 or newer (the Docker image uses 3.11; the tests run on 3.13).
+**Step by step (Python 3.10+):**
 
 ```bash
 git clone https://github.com/sp00nznet/gameservers.git
 cd gameservers/proxmox-deployer
-python3 -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
+python3 -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python run.py
+python run.py                                      # → Running on http://127.0.0.1:5555
 ```
 
-Expected output:
-
-```
- * Serving Flask app 'app'
- * Debug mode: off
-WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
- * Running on all addresses (0.0.0.0)
- * Running on http://127.0.0.1:5555
- * Running on http://<your LAN IP>:5555
-Press CTRL+C to quit
-```
-
-It listens on every interface so other machines on your network can reach it. Set `FLASK_DEBUG=1`
-for auto-reload and the debugger while developing (`./start.sh dev` does that).
-
-Things that usually go wrong:
-- **Windows: `python` opens the Microsoft Store.** Use `py` instead of `python3`, or turn off the
-  alias in *Settings → Apps → Advanced app settings → App execution aliases*.
-- **`ModuleNotFoundError: No module named 'flask_sqlalchemy'`.** The venv isn't active. Run the
-  `activate` line again in the same window.
-
-### First deploy
-
-1. **Settings → Add Connection.** Enter the Proxmox host, port `8006`, user `root@pam` and its
-   password. Provisioning needs the password because it logs in over SSH; an API token can create the
-   container but can't run the install script.
-2. **Test** the connection. It should report your Proxmox version.
-3. **Game Servers → pick a game → Deploy.** Choose the node, storage, bridge and LXC template, then
-   deploy. The deployer creates the container, starts it, and runs the install script if there is one.
-   That can take several minutes for large Steam downloads.
-4. **Deployments** shows the result. A failed install shows as `provision_failed` with the error; you
-   can re-run the install with `POST /api/deployments/<id>/provision` (see [docs/api.md](docs/api.md)).
+Then add your Proxmox host under **Settings** and deploy a game. The full guide covers expected
+output, common mistakes, the first deploy, and running without the web app:
+**[docs/getting-started.md](docs/getting-started.md)**.
 
 ## Usage
 
-Everything in the UI is also a JSON API (full list in [docs/api.md](docs/api.md)):
+Everything in the UI is also a JSON API, e.g. `curl localhost:5555/api/stats`.
 
-```bash
-curl localhost:5555/api/stats
-curl "localhost:5555/api/servers?search=valheim"
-curl -X POST localhost:5555/api/deploy -H 'Content-Type: application/json' \
-  -d '{"connection_id": 1, "server_key": "valheim", "node": "pve",
-       "template": "local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"}'
-```
-
-### Without the web deployer
-
-- **Single Linux host:** `sudo ./setup.sh` opens a menu that installs one of the games with its own
-  folder here (`teamfortress2/`, `projectzomboid/`, `azerothcore/`, ...) as a systemd service.
-- **Terraform/Packer:** VM templates and per-game-type VM groups in `infrastructure/`; see
-  [infrastructure/README.md](infrastructure/README.md).
-
-### Docs
-
-| Topic | File |
+| Topic | Doc |
 |---|---|
-| How the pieces fit | [docs/architecture.md](docs/architecture.md) |
-| Running, upgrading, backing up the deployer | [docs/running.md](docs/running.md) |
-| REST API | [docs/api.md](docs/api.md) |
-| Database tables | [docs/data-model.md](docs/data-model.md) |
-| Every game, its ports and whether it auto-installs | [docs/games.md](docs/games.md) |
-| Per-game settings | [docs/game-configuration.md](docs/game-configuration.md) |
-| Ports to open | [docs/firewall.md](docs/firewall.md) |
-| Troubleshooting | [docs/troubleshooting.md](docs/troubleshooting.md) |
+| Setup, first deploy, single-host scripts, Terraform | [getting-started.md](docs/getting-started.md) |
+| Running, upgrading, backing up | [running.md](docs/running.md) |
+| REST API with examples | [api.md](docs/api.md) |
+| Every game and its ports | [games.md](docs/games.md) |
+| Per-game settings | [game-configuration.md](docs/game-configuration.md) |
+| Firewall ports | [firewall.md](docs/firewall.md) |
+| Troubleshooting | [troubleshooting.md](docs/troubleshooting.md) |
+| How it's built | [architecture.md](docs/architecture.md), [data-model.md](docs/data-model.md) |
 
 ## Building from source
 
-There is nothing to compile. To build the Docker image and run the tests:
+Nothing to compile. Build the image and run the tests (no Proxmox needed; CI runs the same):
 
 ```bash
 cd proxmox-deployer
 docker build -t silverware-deployer .
-pip install -r requirements.txt
 python -m unittest discover tests
 ```
 
-The tests render every page and run a deploy against a mocked Proxmox client, so they need no Proxmox
-host. CI runs them on every push and pull request.
-
 ## Contributors
 
-See [CONTRIBUTORS.md](CONTRIBUTORS.md). Contributions are welcome; read
-[CONTRIBUTING.md](CONTRIBUTING.md) first.
+See [CONTRIBUTORS.md](CONTRIBUTORS.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The game servers this installs are the property of their publishers and
-are downloaded from their official sources (SteamCMD, LinuxGSM, Docker Hub) at install time; nothing
-from them is in this repo.
+MIT, see [LICENSE](LICENSE). Game servers are downloaded from their official sources at install time;
+none of their files are in this repo.

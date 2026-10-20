@@ -3,6 +3,15 @@
 Every endpoint in `proxmox-deployer/app/routes.py`. All bodies are JSON. There is no authentication
 (see `SECURITY.md`). Errors come back as `{"error": "<message>"}` with a 4xx or 5xx status.
 
+## Examples
+
+```bash
+curl localhost:5555/api/stats
+curl "localhost:5555/api/servers?search=valheim"
+curl -X POST localhost:5555/api/deploy -H 'Content-Type: application/json'   -d '{"connection_id": 1, "server_key": "valheim", "node": "pve",
+       "template": "local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"}'
+```
+
 ## Pages
 
 | Path | Page |
