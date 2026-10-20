@@ -29,6 +29,10 @@ def create_app(config_class=None):
     from app.routes import main_bp
     app.register_blueprint(main_bp)
 
+    # base.html renders the category nav on every page, including error.html
+    from app.game_servers import CATEGORIES
+    app.context_processor(lambda: {'categories': CATEGORIES})
+
     # Create database tables
     with app.app_context():
         db.create_all()
