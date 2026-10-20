@@ -206,7 +206,7 @@ services:
         'linuxgsm_name': 'rustserver',
     },
 
-    '7dtd': {
+    'sdtd': {
         'name': '7 Days to Die',
         'type': 'linuxgsm',
         'linuxgsm_name': 'sdtdserver',
@@ -288,7 +288,7 @@ services:
 """
     },
 
-    'conan': {
+    'conanexiles': {
         'name': 'Conan Exiles',
         'type': 'linuxgsm',
         'linuxgsm_name': 'ceserver',
@@ -387,7 +387,7 @@ services:
         'linuxgsm_name': 'inssserver',
     },
 
-    'doi': {
+    'dayofinfamy': {
         'name': 'Day of Infamy',
         'type': 'linuxgsm',
         'linuxgsm_name': 'doiserver',
@@ -531,7 +531,7 @@ services:
         'linuxgsm_name': 'ut99server',
     },
 
-    'ut2k4': {
+    'ut2004': {
         'name': 'Unreal Tournament 2004',
         'type': 'linuxgsm',
         'linuxgsm_name': 'ut2k4server',
@@ -549,7 +549,7 @@ services:
         'linuxgsm_name': 'mhserver',
     },
 
-    'pavlovvr': {
+    'pavlov': {
         'name': 'Pavlov VR',
         'type': 'linuxgsm',
         'linuxgsm_name': 'pvrserver',
@@ -694,7 +694,7 @@ echo "FiveM installed - add your license key to server.cfg before starting"
         'linuxgsm_name': 'rtcwserver',
     },
 
-    'wolfet': {
+    'wet': {
         'name': 'Wolfenstein: Enemy Territory',
         'type': 'linuxgsm',
         'linuxgsm_name': 'etlserver',
@@ -742,7 +742,7 @@ services:
     # ============================================
     # VOICE SERVERS
     # ============================================
-    'teamspeak3': {
+    'ts3': {
         'name': 'TeamSpeak 3',
         'type': 'docker',
         'docker_compose': """

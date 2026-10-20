@@ -3,6 +3,7 @@ Proxmox VE API Client for Game Server Deployment
 Handles LXC container and VM creation, management, and monitoring.
 """
 
+import shlex
 import time
 import urllib3
 from typing import Optional, Dict, Any, List
@@ -425,7 +426,7 @@ class ProxmoxClient:
             )
 
             # Write script to a temp file on the Proxmox host
-            script_path = f'/tmp/provision_{vmid}.sh'
+            script_path = f'/tmp/provision_{int(vmid)}.sh'
             sftp = ssh.open_sftp()
             with sftp.file(script_path, 'w') as f:
                 f.write(script)
@@ -436,7 +437,7 @@ class ProxmoxClient:
 
             # Copy script into container
             stdin, stdout, stderr = ssh.exec_command(
-                f'pct push {vmid} {script_path} /tmp/provision.sh',
+                f'pct push {int(vmid)} {script_path} /tmp/provision.sh',
                 timeout=60
             )
             stdout.read()  # Wait for completion
@@ -444,7 +445,7 @@ class ProxmoxClient:
             # Execute script inside the container using pct exec
             # Use bash -c to run the script
             stdin, stdout, stderr = ssh.exec_command(
-                f'pct exec {vmid} -- bash /tmp/provision.sh',
+                f'pct exec {int(vmid)} -- bash /tmp/provision.sh',
                 timeout=timeout
             )
 
@@ -522,7 +523,9 @@ class ProxmoxClient:
             )
 
             stdin, stdout, stderr = ssh.exec_command(
-                f'pct exec {vmid} -- {command}',
+                # These strings run in a root shell on the Proxmox host: vmid must be an int
+                # and the command must stay one quoted argument, or ';' escapes the container.
+                f'pct exec {int(vmid)} -- bash -c {shlex.quote(command)}',
                 timeout=timeout
             )
 

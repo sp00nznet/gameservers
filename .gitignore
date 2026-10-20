@@ -1,0 +1,34 @@
+# Local one-off ops scripts at the repo root (they hold host addresses and passwords).
+# The deployer's code lives in proxmox-deployer/, so nothing tracked matches this.
+/*.py
+
+# Secrets
+.env
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Deployer database (holds Proxmox passwords)
+*.db
+
+# Terraform / Packer
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+*.pkrvars.hcl
+!*.pkrvars.hcl.example
+output-*/
+packer_cache/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -536,7 +536,7 @@ GAME_SERVERS = {
                    cores=2, memory=4096, disk_size=30, ports=[8080]),
 }
 
-def get_server_by_key(key):
+def get_server(key):
     """Get a server configuration by its key."""
     return GAME_SERVERS.get(key)
 
@@ -572,3 +572,11 @@ def get_category_counts():
         cat = server.get('category', 'other')
         counts[cat] = counts.get(cat, 0) + 1
     return counts
+
+
+STATS = {
+    'total_servers': len(GAME_SERVERS),
+    'lxc_servers': sum(s['deployment_type'] == 'lxc' for s in GAME_SERVERS.values()),
+    'vm_servers': sum(s['deployment_type'] == 'vm' for s in GAME_SERVERS.values()),
+    'categories': len(CATEGORIES),
+}
